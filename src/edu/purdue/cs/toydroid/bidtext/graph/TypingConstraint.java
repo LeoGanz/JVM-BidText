@@ -1,10 +1,10 @@
 package edu.purdue.cs.toydroid.bidtext.graph;
 
+import com.ibm.wala.ipa.slicer.Statement;
+
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-
-import com.ibm.wala.ipa.slicer.Statement;
 
 public class TypingConstraint {
 	public static final int EQ = 0x8;

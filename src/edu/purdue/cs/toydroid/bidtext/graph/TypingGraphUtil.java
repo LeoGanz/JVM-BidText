@@ -1,19 +1,5 @@
 package edu.purdue.cs.toydroid.bidtext.graph;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import com.google.common.util.concurrent.Service.State;
 import com.ibm.wala.analysis.stackMachine.AbstractIntStackMachine;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -24,47 +10,25 @@ import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.slicer.HeapStatement.HeapParamCallee;
 import com.ibm.wala.ipa.slicer.HeapStatement.HeapReturnCallee;
 import com.ibm.wala.ipa.slicer.HeapStatement.HeapReturnCaller;
-import com.ibm.wala.ipa.slicer.HeapStatement;
-import com.ibm.wala.ipa.slicer.NormalReturnCaller;
-import com.ibm.wala.ipa.slicer.NormalStatement;
-import com.ibm.wala.ipa.slicer.ParamCallee;
-import com.ibm.wala.ipa.slicer.ParamCaller;
-import com.ibm.wala.ipa.slicer.PhiStatement;
-import com.ibm.wala.ipa.slicer.SDG;
-import com.ibm.wala.ipa.slicer.Statement;
+import com.ibm.wala.ipa.slicer.*;
 import com.ibm.wala.ipa.slicer.Statement.Kind;
-import com.ibm.wala.ssa.IR;
-import com.ibm.wala.ssa.ISSABasicBlock;
-import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
-import com.ibm.wala.ssa.SSAArrayLoadInstruction;
-import com.ibm.wala.ssa.SSAArrayStoreInstruction;
-import com.ibm.wala.ssa.SSABinaryOpInstruction;
-import com.ibm.wala.ssa.SSACFG;
-import com.ibm.wala.ssa.SSACheckCastInstruction;
-import com.ibm.wala.ssa.SSAConditionalBranchInstruction;
-import com.ibm.wala.ssa.SSAGetInstruction;
-import com.ibm.wala.ssa.SSAInstanceofInstruction;
-import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SSANewInstruction;
-import com.ibm.wala.ssa.SSAPhiInstruction;
-import com.ibm.wala.ssa.SSAPutInstruction;
-import com.ibm.wala.ssa.SSAReturnInstruction;
-import com.ibm.wala.ssa.SSASwitchInstruction;
-import com.ibm.wala.ssa.SymbolTable;
-import com.ibm.wala.types.ClassLoaderReference;
+import com.ibm.wala.ssa.*;
 import com.ibm.wala.types.TypeReference;
-import com.ibm.wala.util.Predicate;
-import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphSlicer;
-import com.ibm.wala.viz.DotUtil;
-
 import edu.purdue.cs.toydroid.bidtext.TextLeak;
 import edu.purdue.cs.toydroid.bidtext.analysis.AnalysisUtil;
 import edu.purdue.cs.toydroid.bidtext.analysis.InterestingNode;
 import edu.purdue.cs.toydroid.bidtext.analysis.SpecialModel;
 import edu.purdue.cs.toydroid.utils.SimpleCounter;
 import edu.purdue.cs.toydroid.utils.WalaUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class TypingGraphUtil {
 	private static Logger logger = LogManager.getLogger(TypingGraphUtil.class);
@@ -752,7 +716,7 @@ public class TypingGraphUtil {
 		int apiType = AnalysisUtil.tryRecordInterestingNode(inst, sg, cha);
 
 		int nVal, nFreeVar = 0, nConstVar = 0;
-		int nParam = inst.getNumberOfParameters();
+		int nParam = inst.getNumberOfPositionalParameters();
 		nVal = nParam;
 		if (inst.hasDef()) {
 			nVal += 1;
@@ -1093,7 +1057,7 @@ public class TypingGraphUtil {
 		List<TypingNode> potentialGNodes = potentialGStringNode(symTable, inst,
 				sg);
 		if (potentialGNodes != null) {
-			SSACFG.BasicBlock locatedBB = cfg.getBlockForInstruction(inst.iindex);
+			SSACFG.BasicBlock locatedBB = cfg.getBlockForInstruction(inst.iIndex());
 			List<ISSABasicBlock> worklist = new LinkedList<ISSABasicBlock>();
 			Set<ISSABasicBlock> storedBBs = new HashSet<ISSABasicBlock>();
 			worklist.add(locatedBB);

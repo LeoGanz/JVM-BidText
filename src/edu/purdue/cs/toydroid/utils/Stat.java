@@ -1,16 +1,16 @@
 package edu.purdue.cs.toydroid.utils;
 
+import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.CallGraph;
+import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SymbolTable;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-
-import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ipa.callgraph.CallGraph;
-import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SymbolTable;
 
 public class Stat {
 	private static int nConstInLayout = 0;

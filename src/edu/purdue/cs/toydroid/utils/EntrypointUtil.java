@@ -1,27 +1,10 @@
 package edu.purdue.cs.toydroid.utils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.dalvik.classLoader.DexIRFactory;
-import com.ibm.wala.dalvik.ipa.callgraph.impl.DexEntryPoint;
-import com.ibm.wala.ipa.callgraph.AnalysisCache;
-import com.ibm.wala.ipa.callgraph.AnalysisOptions;
-import com.ibm.wala.ipa.callgraph.AnalysisScope;
-import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ipa.callgraph.CallGraph;
-import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
-import com.ibm.wala.ipa.callgraph.Entrypoint;
+import com.ibm.wala.ipa.callgraph.*;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.impl.Util;
@@ -31,9 +14,10 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.Selector;
 import com.ibm.wala.util.MonitorUtil.IProgressMonitor;
 import com.ibm.wala.util.NullProgressMonitor;
-import com.ibm.wala.util.WalaException;
-import com.ibm.wala.viz.DotUtil;
-import com.ibm.wala.viz.NodeDecorator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.*;
 
 public class EntrypointUtil {
 	private static Logger logger = LogManager.getLogger(EntrypointUtil.class);
@@ -98,7 +82,7 @@ public class EntrypointUtil {
 	private static void initialEntrypoints(IClassHierarchy ich, IClass clazz) {
 		IClass comp = isAndroidComponent(clazz);
 		if (comp != null) {
-			Collection<IMethod> methods = clazz.getDeclaredMethods();
+			Collection<? extends IMethod> methods = clazz.getDeclaredMethods();
 			for (IMethod method : methods) {
 				String sig = method.getSignature();
 				if (method.isPrivate() || discoveredEntrypoints.contains(sig)) {
@@ -114,7 +98,7 @@ public class EntrypointUtil {
 	}
 
 	public static void discoverNewEntrypoints(AnalysisScope scope) {
-		AnalysisCache cache = new AnalysisCache(new DexIRFactory());
+		AnalysisCache cache = new AnalysisCacheImpl(new DexIRFactory());
 		List<Entrypoint> epList = new LinkedList<Entrypoint>();
 		IProgressMonitor pm = new NullProgressMonitor();
 		epList.addAll(allEntrypoints);
@@ -128,7 +112,7 @@ public class EntrypointUtil {
 			int origNUncalled = uncalledMethods.size();
 			AnalysisOptions options = new AnalysisOptions(scope, epList);
 			options.setReflectionOptions(ReflectionOptions.NONE);
-			SSAPropagationCallGraphBuilder cgBuilder = Util.makeZeroCFABuilder(
+			SSAPropagationCallGraphBuilder cgBuilder = Util.makeZeroCFABuilder(Language.JAVA,
 					options, cache, classHierarchy, scope);
 			try {
 				CallGraph cg = cgBuilder.makeCallGraph(options, pm);

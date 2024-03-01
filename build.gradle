@@ -3,8 +3,8 @@ apply plugin: 'application'
 
 mainClassName = 'edu.purdue.cs.toydroid.bidtext.TextLeak'
 
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 distTar.enabled = false
 
@@ -14,10 +14,10 @@ repositories {
 
 distributions {
     main {
-        baseName = 'BidText'
+        distributionBaseName = 'BidText'
         // include the configuration files into the distribution zip
         contents {
-            into('/' + distributions.main.baseName) {
+            into('/' + distributions.main.distributionBaseName) {
                 from '.'
                 include 'dat/*'
                 exclude 'dat/Config.properties'
@@ -39,18 +39,20 @@ sourceSets {
 
 
 jar {
-    baseName = 'ToyDroid.BidText'
+    archiveBaseName = 'ToyDroid.BidText'
     manifest {
         attributes 'Main-Class': 'edu.purdue.cs.toydroid.bidtext.TextLeak'
     }
 }
 
 dependencies {
+    implementation 'com.ibm.wala:com.ibm.wala.core:1.5.9'
+    implementation 'com.ibm.wala:com.ibm.wala.cast:1.5.9'
+    implementation 'com.ibm.wala:com.ibm.wala.dalvik:1.5.9'
+    implementation 'org.apache.logging.log4j:log4j-core:2.22.1'
+
     // local libs
-    compile fileTree(dir: 'lib', include: ['*.jar'])
+    implementation fileTree(dir: 'lib', include: ['*.jar'])
 }
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '2.13'
-}
 

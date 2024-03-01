@@ -1,16 +1,14 @@
 package edu.purdue.cs.toydroid.bidtext.analysis;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
-import com.ibm.wala.ssa.SSAInstruction;
-
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingSubGraph;
 import edu.purdue.cs.toydroid.utils.AnalysisConfig;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public class InterestingNode {
 	private SSAAbstractInvokeInstruction instr;

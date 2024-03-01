@@ -1,17 +1,13 @@
 package edu.purdue.cs.toydroid.utils;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Properties;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.util.*;
 
 public class SimpleConfig {
 	private static final Logger logger = LogManager.getLogger(SimpleConfig.class);
@@ -45,6 +41,7 @@ public class SimpleConfig {
 	public static String getAndroidJar() throws FileNotFoundException,
 			IOException {
 		parseConfig();
+		System.out.println("androidJar: " + androidJar);
 		return androidJar;
 	}
 

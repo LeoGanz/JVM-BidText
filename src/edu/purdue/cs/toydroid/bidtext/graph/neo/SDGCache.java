@@ -1,35 +1,18 @@
 package edu.purdue.cs.toydroid.bidtext.graph.neo;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import com.ibm.wala.analysis.stackMachine.AbstractIntStackMachine;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
-import com.ibm.wala.ipa.slicer.NormalReturnCaller;
-import com.ibm.wala.ipa.slicer.NormalStatement;
-import com.ibm.wala.ipa.slicer.ParamCaller;
-import com.ibm.wala.ipa.slicer.PhiStatement;
-import com.ibm.wala.ipa.slicer.Statement;
-import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
-import com.ibm.wala.ssa.SSAArrayLoadInstruction;
-import com.ibm.wala.ssa.SSAArrayStoreInstruction;
-import com.ibm.wala.ssa.SSAFieldAccessInstruction;
-import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SymbolTable;
+import com.ibm.wala.ipa.slicer.*;
+import com.ibm.wala.ssa.*;
 import com.ibm.wala.util.graph.Graph;
-
 import edu.purdue.cs.toydroid.utils.AnalysisConfig;
 import edu.purdue.cs.toydroid.utils.WalaUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.*;
 
 public class SDGCache {
 	private static Logger logger = LogManager.getLogger(SDGCache.class);

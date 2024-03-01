@@ -1,26 +1,17 @@
 package edu.purdue.cs.toydroid.bidtext.graph.neo;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import com.ibm.wala.ipa.slicer.HeapStatement;
-import com.ibm.wala.ipa.slicer.NormalReturnCaller;
-import com.ibm.wala.ipa.slicer.ParamCaller;
-import com.ibm.wala.ipa.slicer.PhiStatement;
 import com.ibm.wala.ipa.slicer.Statement;
-import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.util.graph.AbstractNumberedGraph;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.NumberedEdgeManager;
 import com.ibm.wala.util.graph.NumberedNodeManager;
 import com.ibm.wala.util.graph.impl.SlowNumberedNodeManager;
 import com.ibm.wala.util.graph.impl.SparseNumberedEdgeManager;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.*;
 
 public class SimplifiedSDG extends AbstractNumberedGraph<Statement> {
 	private static Logger logger = LogManager.getLogger(SimplifiedSDG.class);

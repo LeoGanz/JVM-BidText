@@ -1,29 +1,18 @@
 package edu.purdue.cs.toydroid.utils;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import com.ibm.wala.classLoader.IMethod;
-import com.ibm.wala.ipa.callgraph.propagation.StaticFieldKey;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
-import com.ibm.wala.ipa.slicer.HeapStatement;
-import com.ibm.wala.ipa.slicer.HeapStatement.HeapParamCallee;
+import com.ibm.wala.ipa.slicer.*;
 import com.ibm.wala.ipa.slicer.HeapStatement.HeapParamCaller;
-import com.ibm.wala.ipa.slicer.HeapStatement.HeapReturnCallee;
 import com.ibm.wala.ipa.slicer.HeapStatement.HeapReturnCaller;
-import com.ibm.wala.ipa.slicer.NormalReturnCallee;
-import com.ibm.wala.ipa.slicer.NormalReturnCaller;
-import com.ibm.wala.ipa.slicer.NormalStatement;
-import com.ibm.wala.ipa.slicer.ParamCallee;
-import com.ibm.wala.ipa.slicer.ParamCaller;
-import com.ibm.wala.ipa.slicer.PhiStatement;
-import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ipa.slicer.Statement.Kind;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.WalaException;
-import com.ibm.wala.viz.NodeDecorator;
+import com.ibm.wala.util.viz.NodeDecorator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class WalaUtil {
 	private static Logger logger = LogManager.getLogger(WalaUtil.class);

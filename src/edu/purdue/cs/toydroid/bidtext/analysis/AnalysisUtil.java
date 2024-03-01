@@ -1,51 +1,20 @@
 package edu.purdue.cs.toydroid.bidtext.analysis;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.slicer.NormalStatement;
 import com.ibm.wala.ipa.slicer.Statement;
-import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
-import com.ibm.wala.ssa.SSAGetInstruction;
-import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SSAPutInstruction;
-import com.ibm.wala.ssa.SymbolTable;
-import com.ibm.wala.types.MethodReference;
-import com.ibm.wala.types.Selector;
-import com.ibm.wala.types.TypeReference;
-
-import edu.purdue.cs.toydroid.bidtext.Main;
-import edu.purdue.cs.toydroid.bidtext.graph.SimpleGraphNode;
-import edu.purdue.cs.toydroid.bidtext.graph.TypingConstraint;
-import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
-import edu.purdue.cs.toydroid.bidtext.graph.TypingGraphUtil;
-import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
-import edu.purdue.cs.toydroid.bidtext.graph.TypingRecord;
-import edu.purdue.cs.toydroid.bidtext.graph.TypingSubGraph;
+import com.ibm.wala.ssa.*;
+import edu.purdue.cs.toydroid.bidtext.graph.*;
 import edu.purdue.cs.toydroid.utils.AnalysisConfig;
 import edu.purdue.cs.toydroid.utils.ResourceUtil;
 import edu.purdue.cs.toydroid.utils.WalaUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.*;
+import java.util.*;
 
 public class AnalysisUtil {
 	private static Logger logger = LogManager.getLogger(AnalysisUtil.class);

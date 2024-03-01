@@ -1,21 +1,13 @@
 package edu.purdue.cs.toydroid.bidtext.graph;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.util.graph.impl.DelegatingNumberedNodeManager;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.*;
 
 public class TypingGraph {
 	private static Logger logger = LogManager.getLogger(TypingGraph.class);

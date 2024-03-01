@@ -1,12 +1,12 @@
 package edu.purdue.cs.toydroid.utils;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class AnalysisConfig {
 	private static Logger logger = LogManager.getLogger(AnalysisConfig.class);

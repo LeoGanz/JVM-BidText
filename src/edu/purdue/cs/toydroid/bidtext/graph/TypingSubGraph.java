@@ -1,18 +1,15 @@
 package edu.purdue.cs.toydroid.bidtext.graph;
 
+import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ssa.IR;
+import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
+import com.ibm.wala.ssa.SymbolTable;
+import com.ibm.wala.types.FieldReference;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ssa.IR;
-import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
-import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SymbolTable;
-import com.ibm.wala.types.FieldReference;
-import com.ibm.wala.types.TypeReference;
-import com.ibm.wala.util.graph.impl.SparseNumberedGraph;
 
 public class TypingSubGraph {
 

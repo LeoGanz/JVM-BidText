@@ -1,56 +1,43 @@
 package edu.purdue.cs.toydroid.bidtext;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.dalvik.classLoader.DexIRFactory;
-import com.ibm.wala.ipa.callgraph.AnalysisCache;
-import com.ibm.wala.ipa.callgraph.AnalysisOptions;
-import com.ibm.wala.ipa.callgraph.AnalysisScope;
-import com.ibm.wala.ipa.callgraph.CallGraph;
-import com.ibm.wala.ipa.callgraph.Entrypoint;
+import com.ibm.wala.ipa.callgraph.*;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.SSAPropagationCallGraphBuilder;
 import com.ibm.wala.ipa.callgraph.propagation.StaticFieldKey;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
+import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
 import com.ibm.wala.ipa.slicer.HeapStatement;
 import com.ibm.wala.ipa.slicer.NormalStatement;
 import com.ibm.wala.ipa.slicer.SDG;
-import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ipa.slicer.Slicer.ControlDependenceOptions;
 import com.ibm.wala.ipa.slicer.Slicer.DataDependenceOptions;
+import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAGetInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.types.ClassLoaderReference;
-import com.ibm.wala.util.Predicate;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphSlicer;
-import com.ibm.wala.viz.DotUtil;
-
 import edu.purdue.cs.toydroid.bidtext.analysis.AnalysisUtil;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraphUtil;
-import edu.purdue.cs.toydroid.bidtext.graph.neo.SDGCache;
-import edu.purdue.cs.toydroid.bidtext.graph.neo.SimplifiedSDG;
 import edu.purdue.cs.toydroid.utils.AnalysisScopeUtil;
 import edu.purdue.cs.toydroid.utils.EntrypointUtil;
 import edu.purdue.cs.toydroid.utils.ResourceUtil;
-import edu.purdue.cs.toydroid.utils.Stat;
 import edu.purdue.cs.toydroid.utils.WalaUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.*;
+import java.util.function.Predicate;
 
 public class TextLeak implements Callable<TextLeak> {
 	private static Logger logger = LogManager.getLogger(TextLeak.class);
@@ -59,7 +46,7 @@ public class TextLeak implements Callable<TextLeak> {
 	private static long timeout = 20;
 	private static long taskStart;
 
-	static String ApkFile = "E:\\Eclipse-Workspace\\TestAndroidAct\\bin\\TestAndroidAct.apk";//"E:\\air.com.boostr.FR-1015000.apk";//
+	static String ApkFile = "/mnt/data/Users/Leonard/git/bidtext/res/test_apps/com.buycott.android-22.apk";
 
 	// static String ApkFile =
 	// "E:\\x\\y\\AM-com.nitrogen.android-221000000.apk";
@@ -168,7 +155,7 @@ public class TextLeak implements Callable<TextLeak> {
 
 	private void initialize() throws Exception {
 		scope = AnalysisScopeUtil.makeAnalysisScope(apkFile);
-		cha = ClassHierarchy.make(scope);
+		cha = ClassHierarchyFactory.make(scope);
 
 		WalaUtil.setClassHierarchy(cha);
 		ResourceUtil.parse(apkFile, cha);
@@ -183,7 +170,7 @@ public class TextLeak implements Callable<TextLeak> {
 		SSAPropagationCallGraphBuilder cgBuilder;
 		CallGraph cg;
 
-		AnalysisCache cache = new AnalysisCache(new DexIRFactory());
+		AnalysisCache cache = new AnalysisCacheImpl(new DexIRFactory());
 		ArrayList<Entrypoint> epList = new ArrayList<Entrypoint>(1);
 		int nEntrypoints = EntrypointUtil.allEntrypointCount();
 		int idxEntrypoint = 1;
@@ -229,7 +216,7 @@ public class TextLeak implements Callable<TextLeak> {
 						" * Too big SDG ({}). Use context-insensitive builder.",
 						nNodesInSDG);
 				// dumpSDG(pruneSDG(sdg));
-				cgBuilder = Util.makeVanillaZeroOneCFABuilder(options, cache,
+				cgBuilder = Util.makeVanillaZeroOneCFABuilder(Language.JAVA, options, cache,
 						cha, scope);
 				cg = cgBuilder.makeCallGraph(options, null);
 				sdg = new SDG(cg, cgBuilder.getPointerAnalysis(),

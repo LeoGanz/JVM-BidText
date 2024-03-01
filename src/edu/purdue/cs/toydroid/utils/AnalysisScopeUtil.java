@@ -1,24 +1,18 @@
 package edu.purdue.cs.toydroid.utils;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Iterator;
-import java.util.Properties;
-import java.util.jar.JarFile;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import com.ibm.wala.classLoader.JarFileModule;
-import com.ibm.wala.classLoader.Module;
+import com.ibm.wala.core.util.config.AnalysisScopeReader;
 import com.ibm.wala.dalvik.classLoader.DexFileModule;
 import com.ibm.wala.dalvik.util.AndroidAnalysisScope;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.types.ClassLoaderReference;
-import com.ibm.wala.util.config.AnalysisScopeReader;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.jar.JarFile;
 
 public class AnalysisScopeUtil {
 
@@ -45,11 +39,14 @@ public class AnalysisScopeUtil {
 			exclusion_file = EXCLUSIONS;
 		}
 
-		scope = AnalysisScopeReader.readJavaScope(BASIC_FILE, new File(
+		scope = AnalysisScopeReader.instance.readJavaScope(BASIC_FILE, new File(
 				exclusion_file), WALA_CLASSLOADER);
 
-		AndroidAnalysisScope.addClassPathToScope(android_jar, scope,
-				ClassLoaderReference.Primordial);
+		// behavior of addClassPathToScope has changed with newer version of WALA
+		// this line is taken from the old version of addClassPathToScope
+		scope.addToScope(ClassLoaderReference.Primordial, new JarFile(android_jar));
+//		AndroidAnalysisScope.addClassPathToScope(android_jar, scope,
+//				ClassLoaderReference.Primordial);
 
 		Iterator<String> iter = SimpleConfig.iteratorAdditionalJars();
 		while (iter.hasNext()) {
@@ -75,7 +72,7 @@ public class AnalysisScopeUtil {
 		scope.setLoaderImpl(ClassLoaderReference.Application,
 				"com.ibm.wala.dalvik.classLoader.WDexClassLoaderImpl");
 
-		scope.addToScope(ClassLoaderReference.Application, new DexFileModule(
+		scope.addToScope(ClassLoaderReference.Application, DexFileModule.make(
 				new File(apkFile)));
 
 		return scope;
