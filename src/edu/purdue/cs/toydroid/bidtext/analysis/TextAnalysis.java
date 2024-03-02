@@ -27,7 +27,7 @@ public class TextAnalysis {
 
 	private static Logger logger = LogManager.getLogger(TextAnalysis.class);
 
-	private final static String GRAMMAR = "edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz";
+	private final static String GRAMMAR = "edu/stanford/nlp/models/lexparser/englishPCFG.caseless.ser.gz";
 
 	private final static Pattern keywordPattern = Pattern.compile("\\b(lat|lng|lon|latlng|latitude|longitude|imei|imsi|u(ser)?((\\s|_)?name|(\\s|_)?id)|e-?mail|pin(code|\\s(code|number|no|#))?|password|pwd|passwd)\\b");
 
@@ -253,8 +253,7 @@ public class TextAnalysis {
 					if (negIdx > 0 && negIdx < tdl.size()) {
 						TypedDependency td = tdl.get(negIdx - 1);
 						if (td.reln().toString().equals("aux")) {
-							TreeGraphNode n = td.dep();
-							String ns = n.label().value();
+							String ns = td.dep().backingLabel().value();
 							if ("should".equals(ns) || "shall".equals(ns)
 							/* || "could".equals(ns) || "can".equals(ns) */) {
 								logger.info("    * Negation detected: <<{}>>",
