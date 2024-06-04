@@ -12,4 +12,3 @@ org\/apache\/xerces\/.*
 javax\/.*
 java\/io\/.*
 java\/util\/.*
-java\/lang\/.*Exception.*
