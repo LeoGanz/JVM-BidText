@@ -19,8 +19,10 @@ import edu.purdue.cs.toydroid.bidtext.graph.TypingGraphUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class SingleEntryPointAnalysis {
     private static final Logger logger = LogManager.getLogger(SingleEntryPointAnalysis.class);
@@ -56,14 +58,9 @@ public class SingleEntryPointAnalysis {
 
         SSAPropagationCallGraphBuilder cgBuilder = Util.makeVanillaNCFABuilder(1, options, cache, classHierarchy);
 
-        // analyzeEntrypoint(entrypoint, cg);
-        // if (Stat.statCG(cg)) {
-        // continue;
-        // }
         if (timeout.get()) {
             return;
         }
-
 
         SDG<InstanceKey> sdg = buildSDG(options, cgBuilder);
         int numberOfNodesInSDG = sdg.getNumberOfNodes();
@@ -72,7 +69,6 @@ public class SingleEntryPointAnalysis {
             return;
         } else if (numberOfNodesInSDG > THRESHOLD_CONTEXT_INSENSITIVE) {
             logger.warn(" * Too big SDG ({}). Use context-insensitive builder.", numberOfNodesInSDG);
-            // dumpSDG(pruneSDG(sdg));
             cgBuilder = Util.makeVanillaZeroOneCFABuilder(Language.JAVA, options, cache, classHierarchy);
             sdg = buildSDG(options, cgBuilder);
         }
@@ -83,7 +79,7 @@ public class SingleEntryPointAnalysis {
 
         Graph<Statement> g = pruneSDG(sdg);
 
-        // dumpSDG(g);
+        dumpSDG(g);
         // if (Main.DEBUG) {
         // DotUtil.dotify(g, WalaUtil.makeNodeDecorator(),
         // entrypoint.getMethod().getName().toString() + ".dot", null,
@@ -106,7 +102,7 @@ public class SingleEntryPointAnalysis {
     private SDG<InstanceKey> buildSDG(AnalysisOptions options, SSAPropagationCallGraphBuilder cgBuilder) throws
             CallGraphBuilderCancelException {
         logger.info(" * Build CallGraph");
-        CallGraph cg = cgBuilder.makeCallGraph(options, null);
+        cg = cgBuilder.makeCallGraph(options, null);
         logger.info(" * CG size: {}", cg.getNumberOfNodes());
         // dumpCG(cg);
 
@@ -186,6 +182,15 @@ public class SingleEntryPointAnalysis {
         });
         logger.info(" * SDG size after pruning: {}", prunedSdg.getNumberOfNodes());
         return prunedSdg;
+    }
+
+    private void dumpSDG(Graph<Statement> sdg) {
+        Map<CGNode, Long> occurencesOfNodes =
+                sdg.stream().collect(Collectors.groupingBy(Statement::getNode, Collectors.counting()));
+        logger.debug("************** SDG DUMP START ****************");
+        logger.debug("Occurrences   x   Method");
+        occurencesOfNodes.forEach((k, v) -> logger.debug(v + "  x  " + k.getMethod().getSignature()));
+        logger.debug("************** SDG DUMP END ****************");
     }
 
 }
