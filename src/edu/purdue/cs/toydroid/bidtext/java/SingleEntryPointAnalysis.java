@@ -36,6 +36,7 @@ public class SingleEntryPointAnalysis {
     private final Entrypoint entrypoint;
     private CallGraph cg;
     private SDG<InstanceKey> sdg;
+    private Graph<Statement> graph;
 
     public SingleEntryPointAnalysis(Entrypoint ep, AnalysisScope scope, ClassHierarchy classHierarchy,
                                     AnalysisCache cache, AtomicBoolean timeout) throws
@@ -49,37 +50,34 @@ public class SingleEntryPointAnalysis {
     }
 
     private void analyze() throws CallGraphBuilderCancelException {
-        if (timeout.get()) {
-            return;
-        }
-
         AnalysisOptions options = new AnalysisOptions(scope, Set.of(entrypoint));
         options.setReflectionOptions(AnalysisOptions.ReflectionOptions.NONE);
 
-        SSAPropagationCallGraphBuilder cgBuilder = Util.makeVanillaNCFABuilder(1, options, cache, classHierarchy);
-
         if (timeout.get()) {
             return;
         }
-
-        SDG<InstanceKey> sdg = buildSDG(options, cgBuilder);
+        SSAPropagationCallGraphBuilder cgBuilder = Util.makeVanillaNCFABuilder(1, options, cache, classHierarchy);
+        buildSDG(options, cgBuilder);
         int numberOfNodesInSDG = sdg.getNumberOfNodes();
         if (numberOfNodesInSDG > THRESHOLD_IGNORE) {
             logger.warn(" * Too big SDG ({}). Ignore it.", numberOfNodesInSDG);
             return;
         } else if (numberOfNodesInSDG > THRESHOLD_CONTEXT_INSENSITIVE) {
             logger.warn(" * Too big SDG ({}). Use context-insensitive builder.", numberOfNodesInSDG);
+            if (timeout.get()) {
+                return;
+            }
             cgBuilder = Util.makeVanillaZeroOneCFABuilder(Language.JAVA, options, cache, classHierarchy);
-            sdg = buildSDG(options, cgBuilder);
+            buildSDG(options, cgBuilder);
         }
 
         if (timeout.get()) {
             return;
         }
 
-        Graph<Statement> g = pruneSDG(sdg);
+        pruneSDG();
 
-        dumpSDG(g);
+        dumpSDG();
         // if (Main.DEBUG) {
         // DotUtil.dotify(g, WalaUtil.makeNodeDecorator(),
         // entrypoint.getMethod().getName().toString() + ".dot", null,
@@ -95,11 +93,11 @@ public class SingleEntryPointAnalysis {
         // logger.info(" * Empty SDG. No interesting stmt found.");
         // } else {
         logger.info(" * Build TypingGraph");
-        TypingGraphUtil.buildTypingGraph(entrypoint, cg, g, classHierarchy);
+        TypingGraphUtil.buildTypingGraph(entrypoint, cg, graph, classHierarchy);
         // }
     }
 
-    private SDG<InstanceKey> buildSDG(AnalysisOptions options, SSAPropagationCallGraphBuilder cgBuilder) throws
+    private void buildSDG(AnalysisOptions options, SSAPropagationCallGraphBuilder cgBuilder) throws
             CallGraphBuilderCancelException {
         logger.info(" * Build CallGraph");
         cg = cgBuilder.makeCallGraph(options, null);
@@ -107,11 +105,11 @@ public class SingleEntryPointAnalysis {
         // dumpCG(cg);
 
         logger.info(" * Build SDG");
-        return new SDG<>(cg, cgBuilder.getPointerAnalysis(), Slicer.DataDependenceOptions.NO_BASE_NO_EXCEPTIONS,
+        sdg = new SDG<>(cg, cgBuilder.getPointerAnalysis(), Slicer.DataDependenceOptions.NO_BASE_NO_EXCEPTIONS,
                 Slicer.ControlDependenceOptions.NONE);
     }
 
-    private Graph<Statement> pruneSDG(final SDG<InstanceKey> sdg) {
+    private void pruneSDG() {
         logger.info(" * SDG size before pruning: {}", sdg.getNumberOfNodes());
         Graph<Statement> prunedSdg = GraphSlicer.prune(sdg, t -> {
             Statement.Kind k = t.getKind();
@@ -181,12 +179,12 @@ public class SingleEntryPointAnalysis {
             return true;
         });
         logger.info(" * SDG size after pruning: {}", prunedSdg.getNumberOfNodes());
-        return prunedSdg;
+        graph = prunedSdg;
     }
 
-    private void dumpSDG(Graph<Statement> sdg) {
+    private void dumpSDG() {
         Map<CGNode, Long> occurencesOfNodes =
-                sdg.stream().collect(Collectors.groupingBy(Statement::getNode, Collectors.counting()));
+                graph.stream().collect(Collectors.groupingBy(Statement::getNode, Collectors.counting()));
         logger.debug("************** SDG DUMP START ****************");
         logger.debug("Occurrences   x   Method");
         occurencesOfNodes.forEach((k, v) -> logger.debug(v + "  x  " + k.getMethod().getSignature()));
