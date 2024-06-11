@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 
 public class TextAnalysis {
 
-    private static Logger logger = LogManager.getLogger(TextAnalysis.class);
+    private static final Logger logger = LogManager.getLogger(TextAnalysis.class);
 
     private final static String GRAMMAR = "edu/stanford/nlp/models/lexparser/englishPCFG.caseless.ser.gz";
 
@@ -38,8 +38,7 @@ public class TextAnalysis {
     private static LexicalizedParser lexParser;
     public String tag;
     private StringBuilder tagBuilder;
-    private boolean isGUIText;
-    private Map<String, List<Statement>> text2Path;
+    private final Map<String, List<Statement>> text2Path;
 
     public TextAnalysis() throws IOException {
         text2Path = new HashMap<>();
@@ -60,19 +59,15 @@ public class TextAnalysis {
         if (str.startsWith("http:") || str.startsWith("https:")
                 || str.startsWith("/")) {
             int idx = str.indexOf('?');
-            if (idx > 0 && str.length() > idx) {
+            if (idx > 0) {
                 String s = str.substring(idx + 1);
-                if (keywordPattern.matcher(s).find()) {
-                    return true;
-                }
+                return keywordPattern.matcher(s).find();
             }
         } else if (!str.contains(" ")) {
             str = splitWord(str);
-            if (keywordPattern.matcher(str).find()) {
-                return true;
-            }
-        } else if (keywordPattern.matcher(str).find()) {
-            return true;
+            return keywordPattern.matcher(str).find();
+        } else {
+            return keywordPattern.matcher(str).find();
         }
         return false;
     }
@@ -82,7 +77,6 @@ public class TextAnalysis {
     }
 
     public String analyze(Map<String, List<Statement>> texts, boolean isGUIText) {
-        this.isGUIText = isGUIText;
         tagBuilder = new StringBuilder();
         if (!isGUIText) {
             if (texts.containsKey("location")) {
@@ -122,7 +116,7 @@ public class TextAnalysis {
                 List<Statement> p = texts.get("android_id");
                 boolean skip = false;
                 if (p != null && p.size() >= 2) {
-                    Statement s = p.get(0);
+                    Statement s = p.getFirst();
                     if (s.getKind() == Statement.Kind.PARAM_CALLER) {
                         ParamCaller pc = (ParamCaller) s;
                         if (pc.getInstruction()
@@ -152,7 +146,7 @@ public class TextAnalysis {
             return;
         }
         Set<Map.Entry<String, List<Statement>>> pSet = text2Path.entrySet();
-        Set<String> refined = new HashSet<String>();
+        Set<String> refined = new HashSet<>();
         for (Map.Entry<String, List<Statement>> pEntry : pSet) {
             String text = pEntry.getKey();
             List<Statement> path = pEntry.getValue();
@@ -213,9 +207,9 @@ public class TextAnalysis {
     }
 
     private void check(List<String> f, Map<String, List<Statement>> texts) {
-		if (f.isEmpty()) {
-			return;
-		}
+        if (f.isEmpty()) {
+            return;
+        }
         if (lexParser == null) {
             lexParser = LexicalizedParser.loadModel(GRAMMAR);
         }
@@ -288,7 +282,7 @@ public class TextAnalysis {
     }
 
     private void record(String str) {
-        if (tagBuilder.length() > 0) {
+        if (!tagBuilder.isEmpty()) {
             tagBuilder.append(',');
         }
         tagBuilder.append('[');
@@ -357,7 +351,7 @@ public class TextAnalysis {
             char ch = builder.charAt(idx);
             if (Character.isUpperCase(ch)) {
                 if (!continuousUpper) {
-                    if (idx > 0 && !Character.isSpace(builder.charAt(idx - 1))) {
+                    if (idx > 0 && !Character.isWhitespace(builder.charAt(idx - 1))) {
                         builder.insert(idx, ' ');
                         idx++;
                     }
@@ -368,7 +362,7 @@ public class TextAnalysis {
                 if (Character.isLowerCase(ch)) {
                     if (continuousUpper) {
                         if (idx > 0
-                                && !Character.isSpace(builder.charAt(idx - 1))) {
+                                && !Character.isWhitespace(builder.charAt(idx - 1))) {
                             builder.insert(idx - 1, ' ');
                             idx++;
                         }

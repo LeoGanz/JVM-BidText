@@ -17,11 +17,11 @@ import java.io.*;
 import java.util.*;
 
 public class AnalysisUtil {
-    private static Logger logger = LogManager.getLogger(AnalysisUtil.class);
+    private static final Logger logger = LogManager.getLogger(AnalysisUtil.class);
 
-    private static Set<InterestingNode> sinks = new HashSet<InterestingNode>();
+    private static final Set<InterestingNode> sinks = new HashSet<InterestingNode>();
 
-    private static Map<String, Integer> activity2Layout = new HashMap<String, Integer>();
+    private static final Map<String, Integer> activity2Layout = new HashMap<String, Integer>();
 
     private static InterestingNode latestInterestingNode = null;
 
@@ -98,7 +98,6 @@ public class AnalysisUtil {
         logger.info(" - dump text for sink: {}", sink.sinkSignature());
         Iterator<TypingNode> args = sink.iterateInterestingArgs();
         File resultFile = new File(idx + "." + sink.tag + ".txt");
-        long fLen = 0;
 
         BufferedWriter writer = null;
         try {
@@ -119,7 +118,7 @@ public class AnalysisUtil {
             if (writer != null) {
                 try {
                     writer.close();
-                } catch (Exception ee) {
+                } catch (Exception ignored) {
                 }
             }
             if (resultFile.exists()) {
@@ -127,11 +126,10 @@ public class AnalysisUtil {
             }
             return;
         }
-        fLen = resultFile.length();
+        long fLen = resultFile.length();
 
-        Map<Entrypoint, Set<TypingNode>> visited = new HashMap<Entrypoint, Set<TypingNode>>();
-        Map<String, List<Statement>> codeTexts = new HashMap<String, List<Statement>>();
-        Set<Integer> constants = new HashSet<Integer>();
+        Map<String, List<Statement>> codeTexts = new HashMap<>();
+        Set<Integer> constants = new HashSet<>();
         while (args.hasNext()) {
             TypingNode gNode = args.next();
             if (gNode.isConstant()) {
@@ -142,13 +140,11 @@ public class AnalysisUtil {
             dumpTextForNode(gNode, sg, graph, codeTexts, constants);
             dumpTextForFields(gNode, sg, graph, codeTexts, constants);
         }
-        visited.clear();
-        visited = null;
 
         TextAnalysis textAnalysis = new TextAnalysis();
         String sensitiveTag = textAnalysis.analyze(codeTexts, false);
 
-        Map<String, List<Statement>> guiTexts = new HashMap<String, List<Statement>>();
+        Map<String, List<Statement>> guiTexts = new HashMap<>();
         dumpTextForPossibleGUI(sink, writer, guiTexts);
 
         // for each widget we collected, if anyone exists in multiple layouts,
@@ -170,7 +166,7 @@ public class AnalysisUtil {
                                 guiTexts.put(line, null);
                             }
                         }
-                    } catch (Exception e) {
+                    } catch (Exception ignored) {
 
                     }
                     toRemove.add(iObj);
@@ -225,7 +221,7 @@ public class AnalysisUtil {
                             guiTexts.put(line, null);
                         }
                     }
-                } catch (Exception e) {
+                } catch (Exception ignored) {
 
                 }
             }
@@ -240,7 +236,7 @@ public class AnalysisUtil {
                     writer.write(" ^[CODE]: ");
                     writer.write(sensitiveTag);
                     writer.newLine();
-                } catch (IOException e) {
+                } catch (IOException ignored) {
 
                 }
             }
@@ -252,7 +248,7 @@ public class AnalysisUtil {
                 writer.write(" ^[GUI]: ");
                 writer.write(guiSensitiveTag);
                 writer.newLine();
-            } catch (IOException e) {
+            } catch (IOException ignored) {
 
             }
         }
@@ -263,7 +259,7 @@ public class AnalysisUtil {
                     writer.write(" - ");
                     writer.write(t);
                     writer.newLine();
-                } catch (IOException e) {
+                } catch (IOException ignored) {
                 }
             }
             for (String t : guiTexts.keySet()) {
@@ -271,21 +267,21 @@ public class AnalysisUtil {
                     writer.write(" + ");
                     writer.write(t);
                     writer.newLine();
-                } catch (IOException e) {
+                } catch (IOException ignored) {
                 }
             }
             constants.removeAll(toRemove);
             for (Integer iObj : constants) {
                 try {
                     writer.write(" # 0x");
-                    writer.write(Integer.toHexString(iObj.intValue()));
+                    writer.write(Integer.toHexString(iObj));
                     writer.newLine();
                     String guiText = ResourceUtil.getLayoutText(iObj);
                     if (guiText != null && !guiText.isEmpty()) {
                         writer.write(guiText);
                         writer.newLine();
                     }
-                } catch (IOException e) {
+                } catch (IOException ignored) {
                 }
             }
         }
@@ -316,7 +312,7 @@ public class AnalysisUtil {
                 writer.write(" ]]");
                 writer.newLine();
                 writer.flush();
-            } catch (IOException e) {
+            } catch (IOException ignored) {
 
             }
         }
@@ -325,12 +321,12 @@ public class AnalysisUtil {
             writer.flush();
             writer.close();
             writer = null;
-        } catch (IOException e) {
+        } catch (IOException ignored) {
         } finally {
             if (null != writer) {
                 try {
                     writer.close();
-                } catch (IOException e) {
+                } catch (IOException ignored) {
                 }
             }
         }
@@ -363,17 +359,15 @@ public class AnalysisUtil {
         if (record == null) {
             return;
         }
-        List<Statement> fieldPath = new LinkedList<Statement>();
-        Stack<TypingGraph> visited = new Stack<TypingGraph>();
-        List<Object> worklist = new LinkedList<Object>();
+        List<Statement> fieldPath = new LinkedList<>();
+        Stack<TypingGraph> visited = new Stack<>();
+        List<Object> worklist = new LinkedList<>();
         dumpTextForFieldsHelper(graph, record, 0, visited, fieldPath, worklist,
                 texts, constants, true);
         visited.clear();
         worklist.clear();
         dumpTextForFieldsHelper(graph, record, 0, visited, fieldPath, worklist,
                 texts, constants, false);
-        visited = null;
-        worklist = null;
     }
 
     private static void dumpTextForFieldsHelper(TypingGraph graph,
@@ -395,12 +389,12 @@ public class AnalysisUtil {
         for (SimpleGraphNode sgn : sources.keySet()) {
             TypingNode tn = graph.getNode(sgn.node);
             if (tn.isField()) {
-                List<Statement> tempPath = new LinkedList<Statement>();
+                List<Statement> tempPath = new LinkedList<>();
                 boolean startAdd = false, endAdd = false;
                 Statement connector = null;
                 String connectorSig = "";
                 if (!fieldPath.isEmpty()) {
-                    connector = fieldPath.get(0);
+                    connector = fieldPath.getFirst();
                     if (connector.getKind() == Statement.Kind.NORMAL) {
                         NormalStatement nstmt = (NormalStatement) connector;
                         SSAInstruction inst = nstmt.getInstruction();
@@ -470,7 +464,7 @@ public class AnalysisUtil {
                     if (visited.contains(g)) {
                         continue;
                     }
-                    Set<TypingRecord> targets = new HashSet<TypingRecord>();
+                    Set<TypingRecord> targets = new HashSet<>();
                     Iterator<TypingNode> iter;
                     if (isBackward) {
                         iter = g.iterateAllOutgoingFields(sig);
@@ -486,11 +480,10 @@ public class AnalysisUtil {
                     }
                     if (!targets.isEmpty()) {
                         worklist.add(g);
-                        worklist.add(Integer.valueOf(permLevel + 1));
+                        worklist.add(permLevel + 1);
                         worklist.add(targets);
                         worklist.add(tempPath);// record field path
                     }
-                    targets = null;
                 }
             }
         }
@@ -505,7 +498,7 @@ public class AnalysisUtil {
             boolean isBackward) {
         while (worklist.size() > initSize) {
             TypingGraph graph = (TypingGraph) worklist.remove(initSize);
-            int permLevel = ((Integer) worklist.remove(initSize)).intValue();
+            int permLevel = (Integer) worklist.remove(initSize);
             Set<TypingRecord> recSet = (Set<TypingRecord>) worklist.remove(initSize);
             List<Statement> fs = (List<Statement>) worklist.remove(initSize);
             if (fs.isEmpty()) {
@@ -521,8 +514,8 @@ public class AnalysisUtil {
                         texts.put(key, null);// insensitive text
                         continue;
                     }
-                    List<Statement> tempPath = new LinkedList<Statement>();
-                    Statement connector = fs.get(0);
+                    List<Statement> tempPath = new LinkedList<>();
+                    Statement connector = fs.getFirst();
                     String connectorSig = "";
                     if (connector.getKind() == Statement.Kind.NORMAL) {
                         NormalStatement nstmt = (NormalStatement) connector;
@@ -596,7 +589,7 @@ public class AnalysisUtil {
                         // writer.newLine();
                         texts.put(line, null);
                     }
-                } catch (IOException e) {
+                } catch (IOException ignored) {
 
                 }
             }

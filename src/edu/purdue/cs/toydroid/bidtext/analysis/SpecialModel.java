@@ -5,19 +5,13 @@ import com.ibm.wala.types.MethodReference;
 
 public class SpecialModel {
 
-	public static boolean isSpecialModel(SSAAbstractInvokeInstruction inst) {
-		MethodReference mRef = inst.getDeclaredTarget();
-		String mName = mRef.getName().toString();
-		if (isSpecialModelByName(mName)) {
-			return true;
-		}
-		return false;
-	}
+    public static boolean isSpecialModel(SSAAbstractInvokeInstruction inst) {
+        MethodReference mRef = inst.getDeclaredTarget();
+        String mName = mRef.getName().toString();
+        return isSpecialModelByName(mName);
+    }
 
-	private static boolean isSpecialModelByName(String name) {
-		if ("getInputStream".equals(name) || "getOutputStream".equals(name)) {
-			return true;
-		}
-		return false;
-	}
+    private static boolean isSpecialModelByName(String name) {
+        return "getInputStream".equals(name) || "getOutputStream".equals(name);
+    }
 }
