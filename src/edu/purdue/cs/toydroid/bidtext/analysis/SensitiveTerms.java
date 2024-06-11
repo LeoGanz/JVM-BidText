@@ -1,75 +1,83 @@
 package edu.purdue.cs.toydroid.bidtext.analysis;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
-public class SensitiveTerms {
-	private static Logger logger = LogManager.getLogger(SensitiveTerms.class);
+public class SensitiveTerms implements Iterable<SensitiveTerms.SensitiveTerm> {
 
-	private final static String termFile = "dat/SensitiveTerms.txt";
-	private final static Map<String, Pattern> terms = new HashMap<String, Pattern>();
-	private static boolean collected = false;
+    public static final String TERM_FILE = "res/SensitiveTerms.txt";
+    private static final String FORBIDDEN_PREFIX = "class.{0,25}";
+    private static final String FORBIDDEN_SUFFIX = "_?type";
+    private final String termFile;
+    private final Set<SensitiveTerm> terms;
 
-	private static void collectTerms() {
-		BufferedReader reader = null;
-		try {
-			reader = new BufferedReader(new InputStreamReader(
-					new FileInputStream(termFile), "UTF-8"));
-			String line = null;
-			String tag = null, regex = null;
-			while ((line = reader.readLine()) != null) {
-				line = line.trim();
-				if (line.isEmpty() || line.startsWith("#")) {
-					continue;
-				}
-				if (tag == null) {
-					tag = line;
-				} else if (regex == null) {
-					regex = line;
-				} else {
-					logger.warn("Ignored Line: {}", line);
-				}
-				if (tag != null && regex != null) {
-					Pattern p = Pattern.compile(regex);
-					terms.put(tag, p);
-					tag = null;
-					regex = null;
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			if (reader != null) {
-				try {
-					reader.close();
-				} catch (Exception e) {
+    public SensitiveTerms(String inputFile) throws IOException {
+        this.termFile = inputFile;
+        terms = new HashSet<>();
+        collectTerms();
+    }
 
-				}
-			}
-		}
-		collected = true;
-	}
+    public static void main(String[] args) throws IOException {
+        SensitiveTerms sensitiveTerms = new SensitiveTerms(TERM_FILE);
+        for (SensitiveTerm term : sensitiveTerms) {
+            System.out.println(term.tag() + "\n" + term.pattern() + "\n");
+        }
+    }
 
-	public static Iterator<Map.Entry<String, Pattern>> iterateSensitiveTerms() {
-		if (!collected) {
-			collectTerms();
-		}
-		return terms.entrySet().iterator();
-	}
-	
-	public static void main(String [] args) {
-		Iterator<Map.Entry<String, Pattern>> iter = iterateSensitiveTerms();
-		while (iter.hasNext()) {
-			Map.Entry<String, Pattern> entry = iter.next();
-			System.out.println(entry.getKey() + "\n" + entry.getValue().pattern() + "\n");
-		}
-	}
+    private void collectTerms() throws IOException {
+        BufferedReader reader =
+                new BufferedReader(
+                        new InputStreamReader(new FileInputStream(termFile), StandardCharsets.UTF_8));
+        String line;
+        String tag = null;
+        StringBuilder regex = null;
+        while ((line = reader.readLine()) != null) {
+            line = line.trim().toLowerCase();
+            if (line.startsWith("#") | (line.isEmpty() && (tag == null || regex == null))) {
+                continue;
+            }
+            if (!line.isEmpty()) {
+                if (tag == null) {
+                    tag = line;
+                } else if (regex == null) {
+                    regex = new StringBuilder(line);
+                } else {
+                    regex.append("|(");
+                    regex.append(line);
+                    regex.append(")");
+                }
+            } else {
+                addTerm(tag, regex);
+                tag = null;
+                regex = null;
+            }
+        }
+
+        // if last pattern is directly followed by EOF instead of blank line complete pattern if
+        // possible
+        if (tag != null && regex != null) {
+            addTerm(tag, regex);
+        }
+    }
+
+    private void addTerm(String tag, StringBuilder regex) {
+        String pattern = "(?<!^(" + FORBIDDEN_PREFIX + "))(" + regex.append(")(?!(" + FORBIDDEN_SUFFIX + "))");
+        terms.add(new SensitiveTerm(tag, Pattern.compile(pattern)));
+    }
+
+    @Override
+    public Iterator<SensitiveTerm> iterator() {
+        return terms.iterator();
+    }
+
+    public record SensitiveTerm(String tag, Pattern pattern) {
+    }
 }
+

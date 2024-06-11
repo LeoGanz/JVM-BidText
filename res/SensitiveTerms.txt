@@ -1,0 +1,28 @@
+# comment
+#
+# CATERGORY
+# pattern 1
+# or pattern n
+# blank line or EOF -> end of category
+
+ACCOUNT
+account[_\s]?id
+
+AUTH
+(bearer|oauth|access|processor)[_/\s]?token
+# (api|client)[_\s]?(key|secret)|key[_\s]?id|secret[_\s]?key
+key|secret
+
+PERSONAL_INFO
+(first|last|given|family|middle|full|nick|account[_\s]?(holder|owner)|applicant|transmitter|employer)[_\s]?name
+date[_\s]?of[_\s]?birth|gender|police[_\s]?record
+tax[_\s]?id|tax[_\s]?identification[_\s]?number|tax[_\s]?residence|ssn|social[_\s]?security[_\s]?number
+national[_\s]?id|passport|drivers?[_\s]?license|gov[_\s]?id
+income|net[_\s]?worth|wealth|employment[_\s]?(status|position)
+(?<!(company|bank)[a-z_\s]{0,15})((e-?)?mail|phone|address|residency|country|state|province|city|(zip|postal)[_\s]?code|nationality)
+visa[_\s]?(type|expiration[_\s]?date)
+politically[_\s]?exposed
+
+BANKING_INFO
+account[_\s]?number|iban
+# bic|swift|routing[_\s]?(code|number)
