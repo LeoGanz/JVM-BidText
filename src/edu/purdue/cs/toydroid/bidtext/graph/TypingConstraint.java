@@ -7,75 +7,72 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class TypingConstraint {
-	public static final int EQ = 0x8;
-	public static final int GE = 0xC;
-	public static final int GE_ASSIGN = 0x10;
-	public static final int GE_UNIDIR = 0x14;// uni-directional for certain APIs
-												// (no backward propagation)
-	public static final int GE_APPEND = 0x18;
-	public static final int GE_PHI = 0x1c;// phi variables
+    public static final int EQ = 0x8;
+    public static final int GE = 0xC;
+    public static final int GE_ASSIGN = 0x10;
+    public static final int GE_UNIDIR = 0x14;// uni-directional for certain APIs
+    // (no backward propagation)
+    public static final int GE_APPEND = 0x18;
+    public static final int GE_PHI = 0x1c;// phi variables
 
-	public int lhs, rhs, sym;
+    public int lhs, rhs, sym;
 
-	private List<Statement> path;// propagation path
+    private final List<Statement> path;// propagation path
 
-	public TypingConstraint(int l, int s, int r) {
-		lhs = l;
-		sym = s;
-		rhs = r;
-		path = new LinkedList<Statement>();
-	}
+    public TypingConstraint(int l, int s, int r) {
+        lhs = l;
+        sym = s;
+        rhs = r;
+        path = new LinkedList<Statement>();
+    }
 
-	public boolean addPath(Statement stmt) {
-		return path.add(stmt);
-	}
+    public boolean addPath(Statement stmt) {
+        return path.add(stmt);
+    }
 
-	public Iterator<Statement> iteratePath() {
-		return path.iterator();
-	}
+    public Iterator<Statement> iteratePath() {
+        return path.iterator();
+    }
 
-	public List<Statement> getPath() {
-		return path;
-	}
+    public List<Statement> getPath() {
+        return path;
+    }
 
-	public boolean equals(Object o) {
-		if (o instanceof TypingConstraint) {
-			TypingConstraint c = (TypingConstraint) o;
-			if (c.sym == sym && c.lhs == lhs && c.rhs == rhs) {
-				return true;
-			}
-		}
-		return false;
-	}
+    public boolean equals(Object o) {
+        if (o instanceof TypingConstraint c) {
+            return c.sym == sym && c.lhs == lhs && c.rhs == rhs;
+        }
+        return false;
+    }
 
-	public int hashCode() {
-		return lhs * 65537 + rhs * 129 + sym;
-	}
+    public int hashCode() {
+        return lhs * 65537 + rhs * 129 + sym;
+    }
 
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(lhs);
-		switch (sym) {
-			case EQ:
-				builder.append("=");
-				break;
-			case GE:
-				builder.append(">=");
-				break;
-			case GE_APPEND:
-				builder.append(">=[append]");
-				break;
-			case GE_UNIDIR:
-				builder.append(">-");
-				break;
-			case GE_ASSIGN:
-				builder.append(">=[assign]");
-				break;
-			default:
-				builder.append("/\\");
-				break;
-		}
-		builder.append(rhs);
-		return builder.toString();
-	}
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(lhs);
+        switch (sym) {
+            case EQ:
+                builder.append("=");
+                break;
+            case GE:
+                builder.append(">=");
+                break;
+            case GE_APPEND:
+                builder.append(">=[append]");
+                break;
+            case GE_UNIDIR:
+                builder.append(">-");
+                break;
+            case GE_ASSIGN:
+                builder.append(">=[assign]");
+                break;
+            default:
+                builder.append("/\\");
+                break;
+        }
+        builder.append(rhs);
+        return builder.toString();
+    }
 }

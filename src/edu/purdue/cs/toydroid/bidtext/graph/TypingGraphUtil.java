@@ -15,7 +15,6 @@ import com.ibm.wala.ipa.slicer.Statement.Kind;
 import com.ibm.wala.ssa.*;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.graph.Graph;
-import com.ibm.wala.util.graph.GraphSlicer;
 import edu.purdue.cs.toydroid.bidtext.analysis.AnalysisUtil;
 import edu.purdue.cs.toydroid.bidtext.analysis.InterestingNode;
 import edu.purdue.cs.toydroid.bidtext.analysis.SpecialModel;
@@ -26,29 +25,27 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TypingGraphUtil {
-    private static Logger logger = LogManager.getLogger(TypingGraphUtil.class);
-
     private static final Pattern NameValuePattern = Pattern.compile("((\\w|-|\\s)+[=:]\\+\\*\\^\\d+\\^\\*\\+)");
-
     public static Map<Entrypoint, TypingGraph> entry2Graph;
+    private static final Logger logger = LogManager.getLogger(TypingGraphUtil.class);
     private static TypingGraph currentTypingGraph;
-    private static Map<SSAGetInstruction, TypingNode> ssaGet2Nodes;
-    private static Map<PointerKey, TypingNode> sFieldHeaps;
+    private static final Map<SSAGetInstruction, TypingNode> ssaGet2Nodes;
+    private static final Map<PointerKey, TypingNode> sFieldHeaps;
     private static ClassHierarchy cha;
+    /************************************************************/
+    private static Statement cachedStmt = null;
 
     static {
-        entry2Graph = new HashMap<Entrypoint, TypingGraph>();
-        ssaGet2Nodes = new HashMap<SSAGetInstruction, TypingNode>();
-        sFieldHeaps = new HashMap<PointerKey, TypingNode>();
+        entry2Graph = new HashMap<>();
+        ssaGet2Nodes = new HashMap<>();
+        sFieldHeaps = new HashMap<>();
     }
 
-    private static void find(Graph<Statement> sdg, Statement stmt,
-                             Set<Statement> left) {
+    private static void find(Graph<Statement> sdg, Statement stmt, Set<Statement> left) {
         left.add(stmt);
         Iterator<Statement> iter = sdg.getSuccNodes(stmt);
         while (iter.hasNext()) {
@@ -60,22 +57,7 @@ public class TypingGraphUtil {
         }
     }
 
-    private static Graph<Statement> pruneSDG(final Graph<Statement> sdg,
-                                             final Set<Statement> left) {
-        return GraphSlicer.prune(sdg, new Predicate<Statement>() {
-
-            @Override
-            public boolean test(Statement t) {
-				if (left.contains(t)) {
-					return true;
-				}
-                return false;
-            }
-        });
-    }
-
-    public static void buildTypingGraph(Entrypoint ep, CallGraph cg,
-                                        Graph<Statement> sdg, ClassHierarchy _cha) {
+    public static void buildTypingGraph(Entrypoint ep, CallGraph cg, Graph<Statement> sdg, ClassHierarchy _cha) {
         cha = _cha;
         TypingGraph graph = new TypingGraph(ep);
         entry2Graph.put(ep, graph);
@@ -106,7 +88,6 @@ public class TypingGraphUtil {
         }
 
         visited.clear();
-        visited = null;
         ssaGet2Nodes.clear();
         sFieldHeaps.clear();
         logger.info("   - Process possible incoming fields");
@@ -134,8 +115,7 @@ public class TypingGraphUtil {
         }
     }
 
-    private static void buildTypingGraphForStmt(CallGraph cg,
-                                                Graph<Statement> sdg, Statement stmt,
+    private static void buildTypingGraphForStmt(CallGraph cg, Graph<Statement> sdg, Statement stmt,
                                                 Map<Statement, SimpleCounter> visited) {
         // only scan top level stmt
         if (0 == sdg.getPredNodeCount(stmt)
@@ -146,57 +126,55 @@ public class TypingGraphUtil {
             List<Object> worklist = new LinkedList<Object>();
             worklist.add(stmt);
             while (!worklist.isEmpty()) {
-                Object obj = worklist.remove(0);
+                Object obj = worklist.removeFirst();
                 Statement nextStmt;
                 TypingNode cachedNode = null;
                 if (obj instanceof TypingNode) {
                     cachedNode = (TypingNode) obj;
-                    nextStmt = (Statement) worklist.remove(0);
+                    nextStmt = (Statement) worklist.removeFirst();
                 } else {
                     nextStmt = (Statement) obj;
                 }
                 // logger.debug("      * {}", nextStmt.toString());
-                buildTypingGraphForStmtBFS(cg, sdg, nextStmt, visited,
-                        cachedNode, worklist);
+                buildTypingGraphForStmtBFS(cg, sdg, nextStmt, visited, cachedNode, worklist);
             }
             // buildTypingGraphForStmtDFS(cg, sdg, stmt, visited, null);
         }
     }
 
-    private static void buildTypingGraphForStmtBFS(CallGraph cg,
-                                                   Graph<Statement> sdg, Statement stmt,
+    private static void buildTypingGraphForStmtBFS(CallGraph cg, Graph<Statement> sdg, Statement stmt,
                                                    Map<Statement, SimpleCounter> visited, TypingNode cachedNode,
                                                    List<Object> worklist) {
         Kind kind = stmt.getKind();
         TypingNode newCachedNode = null;
         switch (kind) {
             case PHI:
-                handlePhi(cg, sdg, stmt);
+                handlePhi(stmt);
                 break;
             case NORMAL:
-                newCachedNode = handleNormal(cg, sdg, stmt, cachedNode);
+                newCachedNode = handleNormal(stmt, cachedNode);
                 break;
             case PARAM_CALLER:
-                newCachedNode = handleParamCaller(cg, sdg, stmt);
+                newCachedNode = handleParamCaller(sdg, stmt);
                 break;
             case PARAM_CALLEE:
-                handleParamCallee(cg, sdg, stmt, cachedNode);
+                handleParamCallee(stmt, cachedNode);
                 break;
             case NORMAL_RET_CALLER:
-                handleNormalRetCaller(cg, sdg, stmt, cachedNode);
+                handleNormalRetCaller(sdg, stmt, cachedNode);
                 break;
             case NORMAL_RET_CALLEE:
                 newCachedNode = cachedNode;
                 // System.err.println("NRCallee: " + cachedNode);
                 break;
             case HEAP_RET_CALLEE:
-                handleHeapRetCallee(cg, sdg, stmt, cachedNode);
+                handleHeapRetCallee(cg, stmt, cachedNode);
                 break;
             case HEAP_RET_CALLER:
-                newCachedNode = handleHeapRetCaller(cg, sdg, stmt);
+                newCachedNode = handleHeapRetCaller(cg, stmt);
                 break;
             case HEAP_PARAM_CALLEE:
-                newCachedNode = handleHeapParamCallee(cg, sdg, stmt);
+                newCachedNode = handleHeapParamCallee(cg, stmt);
                 break;
             case HEAP_PARAM_CALLER:
             default:
@@ -215,39 +193,38 @@ public class TypingGraphUtil {
     }
 
     @Deprecated
-    private static void buildTypingGraphForStmtDFS(CallGraph cg,
-                                                   Graph<Statement> sdg, Statement stmt,
+    private static void buildTypingGraphForStmtDFS(CallGraph cg, Graph<Statement> sdg, Statement stmt,
                                                    Map<Statement, SimpleCounter> visited, TypingNode cachedNode) {
         Kind kind = stmt.getKind();
         TypingNode newCachedNode = null;
         switch (kind) {
             case PHI:
-                handlePhi(cg, sdg, stmt);
+                handlePhi(stmt);
                 break;
             case NORMAL:
-                newCachedNode = handleNormal(cg, sdg, stmt, cachedNode);
+                newCachedNode = handleNormal(stmt, cachedNode);
                 break;
             case PARAM_CALLER:
-                newCachedNode = handleParamCaller(cg, sdg, stmt);
+                newCachedNode = handleParamCaller(sdg, stmt);
                 break;
             case PARAM_CALLEE:
-                handleParamCallee(cg, sdg, stmt, cachedNode);
+                handleParamCallee(stmt, cachedNode);
                 break;
             case NORMAL_RET_CALLER:
-                handleNormalRetCaller(cg, sdg, stmt, cachedNode);
+                handleNormalRetCaller(sdg, stmt, cachedNode);
                 break;
             case NORMAL_RET_CALLEE:
                 newCachedNode = cachedNode;
                 // System.err.println("NRCallee: " + cachedNode);
                 break;
             case HEAP_RET_CALLEE:
-                handleHeapRetCallee(cg, sdg, stmt, cachedNode);
+                handleHeapRetCallee(cg, stmt, cachedNode);
                 break;
             case HEAP_RET_CALLER:
-                newCachedNode = handleHeapRetCaller(cg, sdg, stmt);
+                newCachedNode = handleHeapRetCaller(cg, stmt);
                 break;
             case HEAP_PARAM_CALLEE:
-                newCachedNode = handleHeapParamCallee(cg, sdg, stmt);
+                newCachedNode = handleHeapParamCallee(cg, stmt);
                 break;
             case HEAP_PARAM_CALLER:
             default:
@@ -258,10 +235,8 @@ public class TypingGraphUtil {
             // visited.add(stmt);
             if (stmt.getKind() == Statement.Kind.NORMAL) {
                 NormalStatement ns = (NormalStatement) stmt;
-                if ("arraystore 47[51] = 49".equals(ns.getInstruction()
-                        .toString())) {
-                    logger.debug("     arraystore 47[51] = 49 ::: {}",
-                            sdg.getPredNodeCount(stmt));
+                if ("arraystore 47[51] = 49".equals(ns.getInstruction().toString())) {
+                    logger.debug("     arraystore 47[51] = 49 ::: {}", sdg.getPredNodeCount(stmt));
                     Iterator<Statement> i = sdg.getPredNodes(stmt);
                     while (i.hasNext()) {
                         logger.debug("   {}", i.next().toString());
@@ -271,23 +246,20 @@ public class TypingGraphUtil {
             Iterator<Statement> iter = sdg.getSuccNodes(stmt);
             while (iter.hasNext()) {
                 stmt = iter.next();
-                buildTypingGraphForStmtDFS(cg, sdg, stmt, visited,
-                        newCachedNode);
+                buildTypingGraphForStmtDFS(cg, sdg, stmt, visited, newCachedNode);
             }
         }
     }
 
+    /************************************************************/
+    /************** Handle Specific WALA Statement **************/
+
     /**
      * Return True if stmt has more than 1 incoming edges and all these edges
      * have been traversed.
-     *
-     * @param sdg
-     * @param stmt
-     * @param visited
-     * @return
      */
-    private static boolean statementVisited(Graph<Statement> sdg,
-                                            Statement stmt, Map<Statement, SimpleCounter> visited) {
+    private static boolean statementVisited(Graph<Statement> sdg, Statement stmt,
+                                            Map<Statement, SimpleCounter> visited) {
         boolean v = false;
         int predNCount = sdg.getPredNodeCount(stmt);
         if (predNCount > 1) {
@@ -302,31 +274,23 @@ public class TypingGraphUtil {
             if (newCounter.count >= predNCount) {
                 // v = true;
                 visited.remove(stmt);
-                newCounter = null;
             }
         }
 
         return v;
     }
 
-    /************************************************************/
-    /************** Handle Specific WALA Statement **************/
-    /************************************************************/
-    private static Statement cachedStmt = null;
-
-    private static void handlePhi(CallGraph cg, Graph<Statement> sdg,
-                                  Statement stmt) {
+    private static void handlePhi(Statement stmt) {
         CGNode cgNode = stmt.getNode();
         if (cgNode.getMethod().isSynthetic()) {
             return;
         }
         TypingSubGraph sg = currentTypingGraph.findOrCreateSubGraph(cgNode);
         PhiStatement phiStmt = (PhiStatement) stmt;
-        handleSSAPhi(cgNode, phiStmt, phiStmt.getPhi(), sg);
+        handleSSAPhi(phiStmt, phiStmt.getPhi(), sg);
     }
 
-    private static TypingNode handleNormal(CallGraph cg, Graph<Statement> sdg,
-                                           Statement stmt, TypingNode cachedNode) {
+    private static TypingNode handleNormal(Statement stmt, TypingNode cachedNode) {
         CGNode cgNode = stmt.getNode();
         TypingNode newCachedNode = null;
         if (cgNode.getMethod().isSynthetic()) {
@@ -337,42 +301,34 @@ public class TypingGraphUtil {
         SSAInstruction inst = nstmt.getInstruction();
 
         if (inst instanceof SSAPutInstruction) {
-            newCachedNode = handleSSAPut(cgNode, nstmt,
-                    (SSAPutInstruction) inst, sg);
+            newCachedNode = handleSSAPut(nstmt, (SSAPutInstruction) inst, sg);
             // System.err.println("SSAPut: " + inst + " \n\t [" + newCachedNode
             // + "]");
         } else if (inst instanceof SSAGetInstruction) {
             // System.err.println("SSAGet: " + inst + " \n\t [" + cachedNode +
             // "]");
-            handleSSAGet(cgNode, nstmt, (SSAGetInstruction) inst, sg,
-                    cachedNode);
+            handleSSAGet(nstmt, (SSAGetInstruction) inst, sg, cachedNode);
         } else if (inst instanceof SSACheckCastInstruction) {
-            handleSSACheckCast(cgNode, nstmt, (SSACheckCastInstruction) inst,
-                    sg);
+            handleSSACheckCast(nstmt, (SSACheckCastInstruction) inst, sg);
         } else if (inst instanceof SSANewInstruction) {
-            handleSSANew(cgNode, nstmt, (SSANewInstruction) inst, sg);
+            handleSSANew((SSANewInstruction) inst, sg);
         } else if (inst instanceof SSAArrayLoadInstruction) {
-            handleSSAArrayLoad(cgNode, nstmt, (SSAArrayLoadInstruction) inst,
-                    sg);
+            handleSSAArrayLoad(nstmt, (SSAArrayLoadInstruction) inst, sg);
         } else if (inst instanceof SSAArrayStoreInstruction) {
-            handleSSAArrayStore(cgNode, nstmt, (SSAArrayStoreInstruction) inst,
-                    sg);
+            handleSSAArrayStore(nstmt, (SSAArrayStoreInstruction) inst, sg);
         } else if (inst instanceof SSAReturnInstruction) {
-            newCachedNode = handleSSAReturn(cgNode, nstmt,
-                    (SSAReturnInstruction) inst, sg);
+            newCachedNode = handleSSAReturn(nstmt, (SSAReturnInstruction) inst, sg);
         } else if (inst instanceof SSAInstanceofInstruction) {
-            handleSSAInstanceof(cgNode, nstmt, (SSAInstanceofInstruction) inst,
-                    sg);
+            handleSSAInstanceof((SSAInstanceofInstruction) inst, sg);
         } else if (inst instanceof SSABinaryOpInstruction) {
-            handleSSABinaryOp(cgNode, nstmt, (SSABinaryOpInstruction) inst, sg);
+            handleSSABinaryOp(nstmt, (SSABinaryOpInstruction) inst, sg);
         } else if (!(inst instanceof SSAAbstractInvokeInstruction)) {
             // System.err.println("Unrecognized Normal Stmt: " + stmt);
         } // invoke is ignored.
         return newCachedNode;
     }
 
-    private static TypingNode handleParamCaller(CallGraph cg,
-                                                Graph<Statement> sdg, Statement stmt) {
+    private static TypingNode handleParamCaller(Graph<Statement> sdg, Statement stmt) {
         CGNode cgNode = stmt.getNode();
         TypingNode newCachedNode = null;
         if (cgNode.getMethod().isSynthetic()) {
@@ -397,8 +353,7 @@ public class TypingGraphUtil {
         return newCachedNode;
     }
 
-    private static void handleParamCallee(CallGraph cg, Graph<Statement> sdg,
-                                          Statement stmt, TypingNode cachedNode) {
+    private static void handleParamCallee(Statement stmt, TypingNode cachedNode) {
         CGNode cgNode = stmt.getNode();
         if (cgNode.getMethod().isSynthetic()) {
             return;
@@ -414,14 +369,12 @@ public class TypingGraphUtil {
             // currentTypingGraph.mergeClass(cachedNode, paramNode);
             TypingRecord orec = currentTypingGraph.findOrCreateTypingRecord(cachedNode.getGraphNodeId());
             TypingRecord nrec = currentTypingGraph.findOrCreateTypingRecord(paramNode.getGraphNodeId());
-            TypingConstraint c = new TypingConstraint(
-                    paramNode.getGraphNodeId(), TypingConstraint.EQ,
-                    cachedNode.getGraphNodeId());
+            TypingConstraint c =
+                    new TypingConstraint(paramNode.getGraphNodeId(), TypingConstraint.EQ, cachedNode.getGraphNodeId());
             TypingConstraint bc = c;
             if (cachedStmt != null) {
                 c.addPath(cachedStmt);
-                bc = new TypingConstraint(paramNode.getGraphNodeId(),
-                        TypingConstraint.EQ, cachedNode.getGraphNodeId());
+                bc = new TypingConstraint(paramNode.getGraphNodeId(), TypingConstraint.EQ, cachedNode.getGraphNodeId());
                 // reverse the path for backward propagation
                 bc.addPath(stmt);
                 bc.addPath(cachedStmt);
@@ -433,8 +386,7 @@ public class TypingGraphUtil {
         }
     }
 
-    private static void handleNormalRetCaller(CallGraph cg,
-                                              Graph<Statement> sdg, Statement stmt, TypingNode cachedNode) {
+    private static void handleNormalRetCaller(Graph<Statement> sdg, Statement stmt, TypingNode cachedNode) {
         NormalReturnCaller nrc = (NormalReturnCaller) stmt;
         CGNode cgNode = nrc.getNode();
         TypingSubGraph sg = currentTypingGraph.findOrCreateSubGraph(cgNode);
@@ -442,22 +394,20 @@ public class TypingGraphUtil {
             handleSSAInvokeAPI(cgNode, stmt, nrc.getInstruction(), sg);
         } else if (nrc.getInstruction().hasDef()) {
             if (cachedNode == null) {
-                System.err.println("No Return Object is found for NormalRetCaller: "
-                        + nrc);
+                System.err.println("No Return Object is found for NormalRetCaller: " + nrc);
             } else {
                 int ret = nrc.getValueNumber();
                 TypingNode retNode = sg.findOrCreate(ret);
                 // currentTypingGraph.mergeClass(cachedNode, retNode);
                 TypingRecord orec = currentTypingGraph.findOrCreateTypingRecord(cachedNode.getGraphNodeId());
                 TypingRecord nrec = currentTypingGraph.findOrCreateTypingRecord(retNode.getGraphNodeId());
-                TypingConstraint c = new TypingConstraint(
-                        retNode.getGraphNodeId(), TypingConstraint.EQ,
+                TypingConstraint c = new TypingConstraint(retNode.getGraphNodeId(), TypingConstraint.EQ,
                         cachedNode.getGraphNodeId());
                 TypingConstraint bc = c;
                 if (cachedStmt != null) {
                     c.addPath(cachedStmt);
-                    bc = new TypingConstraint(retNode.getGraphNodeId(),
-                            TypingConstraint.EQ, cachedNode.getGraphNodeId());
+                    bc = new TypingConstraint(retNode.getGraphNodeId(), TypingConstraint.EQ,
+                            cachedNode.getGraphNodeId());
                     bc.addPath(stmt);
                     bc.addPath(cachedStmt);
                 }
@@ -469,10 +419,8 @@ public class TypingGraphUtil {
         }
     }
 
-    private static void handleHeapRetCallee(CallGraph cg, Graph<Statement> sdg,
-                                            Statement stmt, TypingNode cachedNode) {
-        if (cachedNode == null || !cachedNode.isStaticField()
-                || stmt.getNode().equals(cg.getFakeRootNode())) {
+    private static void handleHeapRetCallee(CallGraph cg, Statement stmt, TypingNode cachedNode) {
+        if (cachedNode == null || !cachedNode.isStaticField() || stmt.getNode().equals(cg.getFakeRootNode())) {
             // instance field is immediately used
             return;
         }
@@ -486,8 +434,7 @@ public class TypingGraphUtil {
         }
     }
 
-    private static TypingNode handleHeapRetCaller(CallGraph cg,
-                                                  Graph<Statement> sdg, Statement stmt) {
+    private static TypingNode handleHeapRetCaller(CallGraph cg, Statement stmt) {
         if (stmt.getNode().equals(cg.getFakeRootNode())) {
             return null;
         }
@@ -500,8 +447,7 @@ public class TypingGraphUtil {
         return newCacheNode;
     }
 
-    private static TypingNode handleHeapParamCallee(CallGraph cg,
-                                                    Graph<Statement> sdg, Statement stmt) {
+    private static TypingNode handleHeapParamCallee(CallGraph cg, Statement stmt) {
         if (stmt.getNode().equals(cg.getFakeRootNode())) {
             return null;
         }
@@ -517,8 +463,7 @@ public class TypingGraphUtil {
     /************************************************************/
     /************* Handle Specific SSA Instructions *************/
     /************************************************************/
-    private static TypingNode handleSSAPut(CGNode cgNode, NormalStatement stmt,
-                                           SSAPutInstruction inst, TypingSubGraph sg) {
+    private static TypingNode handleSSAPut(NormalStatement stmt, SSAPutInstruction inst, TypingSubGraph sg) {
         int val = inst.getVal(); // rhs
         int ref;
         TypingNode valNode = sg.findOrCreate(val);
@@ -533,8 +478,8 @@ public class TypingGraphUtil {
         // currentTypingGraph.mergeClass(valNode, refNode);
         TypingRecord orec = currentTypingGraph.findOrCreateTypingRecord(valNode.getGraphNodeId());
         TypingRecord nrec = currentTypingGraph.findOrCreateTypingRecord(refNode.getGraphNodeId());
-        TypingConstraint c = new TypingConstraint(refNode.getGraphNodeId(),
-                TypingConstraint.EQ, valNode.getGraphNodeId());
+        TypingConstraint c =
+                new TypingConstraint(refNode.getGraphNodeId(), TypingConstraint.EQ, valNode.getGraphNodeId());
         c.addPath(stmt);
         orec.addForwardTypingConstraint(c);
         nrec.addBackwardTypingConstraint(c);
@@ -543,8 +488,8 @@ public class TypingGraphUtil {
         return refNode;
     }
 
-    private static void handleSSAGet(CGNode cgNode, NormalStatement stmt,
-                                     SSAGetInstruction inst, TypingSubGraph sg, TypingNode cachedNode) {
+    private static void handleSSAGet(NormalStatement stmt, SSAGetInstruction inst, TypingSubGraph sg,
+                                     TypingNode cachedNode) {
         // if (inst.getDeclaredField()
         // .getName().toString().equals("userMessageForWeb"))
         // return;
@@ -560,11 +505,9 @@ public class TypingGraphUtil {
                 TypingRecord rec = currentTypingGraph.getTypingRecord(cachedNode.getGraphNodeId());
                 if (rec == null) {
                     rec = currentTypingGraph.findOrCreateTypingRecord(prevNode.getGraphNodeId());
-                    currentTypingGraph.setTypingRecord(
-                            cachedNode.getGraphNodeId(), rec);
+                    currentTypingGraph.setTypingRecord(cachedNode.getGraphNodeId(), rec);
                 } else {
-                    TypingConstraint c = new TypingConstraint(
-                            prevNode.getGraphNodeId(), TypingConstraint.EQ,
+                    TypingConstraint c = new TypingConstraint(prevNode.getGraphNodeId(), TypingConstraint.EQ,
                             cachedNode.getGraphNodeId());
                     TypingRecord prevRec = currentTypingGraph.findOrCreateTypingRecord(prevNode.getGraphNodeId());
                     prevRec.addBackwardTypingConstraint(c);
@@ -578,8 +521,7 @@ public class TypingGraphUtil {
                 // currentTypingGraph.mergeClass(cachedNode, defNode);
                 TypingRecord orec = currentTypingGraph.findOrCreateTypingRecord(cachedNode.getGraphNodeId());
                 TypingRecord nrec = currentTypingGraph.findOrCreateTypingRecord(defNode.getGraphNodeId());
-                TypingConstraint c = new TypingConstraint(
-                        defNode.getGraphNodeId(), TypingConstraint.EQ,
+                TypingConstraint c = new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.EQ,
                         cachedNode.getGraphNodeId());
                 c.addPath(stmt);
                 orec.addForwardTypingConstraint(c);
@@ -591,14 +533,13 @@ public class TypingGraphUtil {
             if (inst.isStatic()) {
                 refNode = sg.createStaticFieldNode(inst.getDeclaredField());
             } else {
-                refNode = sg.createInstanceFieldNode(inst.getRef(),
-                        inst.getDeclaredField());
+                refNode = sg.createInstanceFieldNode(inst.getRef(), inst.getDeclaredField());
             }
             // currentTypingGraph.mergeClass(refNode, defNode);
             TypingRecord orec = currentTypingGraph.findOrCreateTypingRecord(refNode.getGraphNodeId());
             TypingRecord nrec = currentTypingGraph.findOrCreateTypingRecord(defNode.getGraphNodeId());
-            TypingConstraint c = new TypingConstraint(defNode.getGraphNodeId(),
-                    TypingConstraint.EQ, refNode.getGraphNodeId());
+            TypingConstraint c =
+                    new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.EQ, refNode.getGraphNodeId());
             c.addPath(stmt);
             orec.addForwardTypingConstraint(c);
             nrec.addBackwardTypingConstraint(c);
@@ -608,8 +549,7 @@ public class TypingGraphUtil {
         }
     }
 
-    private static void handleSSACheckCast(CGNode cgNode, NormalStatement stmt,
-                                           SSACheckCastInstruction inst, TypingSubGraph sg) {
+    private static void handleSSACheckCast(NormalStatement stmt, SSACheckCastInstruction inst, TypingSubGraph sg) {
         int val = inst.getVal(); // rhs
         int ret = inst.getResult(); // lhs
         TypingNode valNode, retNode;
@@ -618,22 +558,20 @@ public class TypingGraphUtil {
         // currentTypingGraph.mergeClass(valNode, retNode);
         TypingRecord orec = currentTypingGraph.findOrCreateTypingRecord(valNode.getGraphNodeId());
         TypingRecord nrec = currentTypingGraph.findOrCreateTypingRecord(retNode.getGraphNodeId());
-        TypingConstraint c = new TypingConstraint(valNode.getGraphNodeId(),
-                TypingConstraint.EQ, retNode.getGraphNodeId());
+        TypingConstraint c =
+                new TypingConstraint(valNode.getGraphNodeId(), TypingConstraint.EQ, retNode.getGraphNodeId());
         c.addPath(stmt);
         orec.addForwardTypingConstraint(c);
         nrec.addBackwardTypingConstraint(c);
     }
 
-    private static void handleSSANew(CGNode cgNode, NormalStatement stmt,
-                                     SSANewInstruction inst, TypingSubGraph sg) {
+    private static void handleSSANew(SSANewInstruction inst, TypingSubGraph sg) {
         int def = inst.getDef();
         TypingNode defNode = sg.findOrCreate(def);
         defNode.joke();
     }
 
-    private static void handleSSAArrayLoad(CGNode cgNode, NormalStatement stmt,
-                                           SSAArrayLoadInstruction inst, TypingSubGraph sg) {
+    private static void handleSSAArrayLoad(NormalStatement stmt, SSAArrayLoadInstruction inst, TypingSubGraph sg) {
         int ref = inst.getArrayRef(); // rhs
         int def = inst.getDef(); // lhs
         TypingNode refNode = sg.findOrCreate(ref);
@@ -641,16 +579,14 @@ public class TypingGraphUtil {
         // currentTypingGraph.mergeClass(refNode, defNode);
         TypingRecord orec = currentTypingGraph.findOrCreateTypingRecord(refNode.getGraphNodeId());
         TypingRecord nrec = currentTypingGraph.findOrCreateTypingRecord(defNode.getGraphNodeId());
-        TypingConstraint c = new TypingConstraint(defNode.getGraphNodeId(),
-                TypingConstraint.EQ, refNode.getGraphNodeId());
+        TypingConstraint c =
+                new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.EQ, refNode.getGraphNodeId());
         c.addPath(stmt);
         orec.addForwardTypingConstraint(c);
         nrec.addBackwardTypingConstraint(c);
     }
 
-    private static void handleSSAArrayStore(CGNode cgNode,
-                                            NormalStatement stmt, SSAArrayStoreInstruction inst,
-                                            TypingSubGraph sg) {
+    private static void handleSSAArrayStore(NormalStatement stmt, SSAArrayStoreInstruction inst, TypingSubGraph sg) {
         int ref = inst.getArrayRef(); // lhs
         int val = inst.getValue(); // rhs
         TypingNode refNode = sg.findOrCreate(ref);
@@ -658,15 +594,14 @@ public class TypingGraphUtil {
         // currentTypingGraph.mergeClass(valNode, refNode);
         TypingRecord orec = currentTypingGraph.findOrCreateTypingRecord(valNode.getGraphNodeId());
         TypingRecord nrec = currentTypingGraph.findOrCreateTypingRecord(refNode.getGraphNodeId());
-        TypingConstraint c = new TypingConstraint(refNode.getGraphNodeId(),
-                TypingConstraint.EQ, valNode.getGraphNodeId());
+        TypingConstraint c =
+                new TypingConstraint(refNode.getGraphNodeId(), TypingConstraint.EQ, valNode.getGraphNodeId());
         c.addPath(stmt);
         orec.addForwardTypingConstraint(c);
         nrec.addBackwardTypingConstraint(c);
     }
 
-    private static TypingNode handleSSAReturn(CGNode cgNode,
-                                              NormalStatement stmt, SSAReturnInstruction inst, TypingSubGraph sg) {
+    private static TypingNode handleSSAReturn(NormalStatement stmt, SSAReturnInstruction inst, TypingSubGraph sg) {
         TypingNode retNode = null;
         if (!inst.returnsVoid()) {
             int ret = inst.getResult();
@@ -676,9 +611,7 @@ public class TypingGraphUtil {
         return retNode;
     }
 
-    private static void handleSSAInstanceof(CGNode cgNode,
-                                            NormalStatement stmt, SSAInstanceofInstruction inst,
-                                            TypingSubGraph sg) {
+    private static void handleSSAInstanceof(SSAInstanceofInstruction inst, TypingSubGraph sg) {
         int ref = inst.getRef();
         int def = inst.getDef();
         TypingNode refNode = sg.findOrCreate(ref);
@@ -687,8 +620,7 @@ public class TypingGraphUtil {
         // TODO: same as "a = b"?
     }
 
-    private static void handleSSABinaryOp(CGNode cgNode, NormalStatement stmt,
-                                          SSABinaryOpInstruction inst, TypingSubGraph sg) {
+    private static void handleSSABinaryOp(NormalStatement stmt, SSABinaryOpInstruction inst, TypingSubGraph sg) {
         int def = inst.getDef();
         int use0 = inst.getUse(0);
         int use1 = inst.getUse(1);
@@ -700,10 +632,10 @@ public class TypingGraphUtil {
         TypingRecord use0Rec = currentTypingGraph.findOrCreateTypingRecord(use0Node.getGraphNodeId());
         TypingRecord use1Rec = currentTypingGraph.findOrCreateTypingRecord(use1Node.getGraphNodeId());
         TypingRecord defRec = currentTypingGraph.findOrCreateTypingRecord(defNode.getGraphNodeId());
-        TypingConstraint c0 = new TypingConstraint(defNode.getGraphNodeId(),
-                TypingConstraint.GE_ASSIGN, use0Node.getGraphNodeId());
-        TypingConstraint c1 = new TypingConstraint(defNode.getGraphNodeId(),
-                TypingConstraint.GE_ASSIGN, use1Node.getGraphNodeId());
+        TypingConstraint c0 =
+                new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.GE_ASSIGN, use0Node.getGraphNodeId());
+        TypingConstraint c1 =
+                new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.GE_ASSIGN, use1Node.getGraphNodeId());
         defRec.addBackwardTypingConstraint(c0);
         defRec.addBackwardTypingConstraint(c1);
         use0Rec.addForwardTypingConstraint(c0);
@@ -712,8 +644,8 @@ public class TypingGraphUtil {
         c1.addPath(stmt);
     }
 
-    private static void handleSSAInvokeAPI(CGNode cgNode, Statement stmt,
-                                           SSAAbstractInvokeInstruction inst, TypingSubGraph sg) {
+    private static void handleSSAInvokeAPI(CGNode cgNode, Statement stmt, SSAAbstractInvokeInstruction inst,
+                                           TypingSubGraph sg) {
         int apiType = AnalysisUtil.tryRecordInterestingNode(inst, sg, cha);
 
         int nVal, nFreeVar = 0, nConstVar = 0;
@@ -758,12 +690,8 @@ public class TypingGraphUtil {
             }
             // freeNodes[nFreeVar++] = sg.findOrCreate(inst.getReceiver());
             thisNode = sg.findOrCreate(inst.getReceiver());
-            String thisType = inst.getDeclaredTarget()
-                    .getDeclaringClass()
-                    .getName()
-                    .toString();
-            if (thisType.startsWith("Landroid/app")
-                    || thisType.startsWith("Landroid/content")) {
+            String thisType = inst.getDeclaredTarget().getDeclaringClass().getName().toString();
+            if (thisType.startsWith("Landroid/app") || thisType.startsWith("Landroid/content")) {
                 skipThis = true;
             }
         }
@@ -783,17 +711,15 @@ public class TypingGraphUtil {
             defRec = currentTypingGraph.findOrCreateTypingRecord(defNode.getGraphNodeId());
         }
         String apiSig = inst.getDeclaredTarget().getSignature();
-        if (apiSig.startsWith("java.lang.StringBuilder.append(")
-                || apiSig.startsWith("java.lang.StringBuilder.<init>(Ljava/")) {
-            if ((stmt.getKind() == Kind.PARAM_CALLER && ((ParamCaller) stmt).getValueNumber() == inst.getUse(1))
-                    || stmt.getKind() == Kind.NORMAL_RET_CALLER) {
-                handleStringBuilderAppend(stmt, cgNode, defNode, defRec,
-                        thisNode, thisRec, sg.find(inst.getUse(1)));
+        if (apiSig.startsWith("java.lang.StringBuilder.append(") ||
+                apiSig.startsWith("java.lang.StringBuilder.<init>(Ljava/")) {
+            if ((stmt.getKind() == Kind.PARAM_CALLER && ((ParamCaller) stmt).getValueNumber() == inst.getUse(1)) ||
+                    stmt.getKind() == Kind.NORMAL_RET_CALLER) {
+                handleStringBuilderAppend(stmt, cgNode, defNode, defRec, thisNode, thisRec, sg.find(inst.getUse(1)));
             }
             return;
         } else if (apiSig.startsWith("java.lang.StringBuilder.toString(")) {
-            handleStringBuilderToString(stmt, defNode, defRec, thisNode,
-                    thisRec);
+            handleStringBuilderToString(stmt, defNode, defRec, thisNode, thisRec);
             return;
         }
         String sig = WalaUtil.getSignature(inst);
@@ -801,7 +727,7 @@ public class TypingGraphUtil {
         if (apiRule != null) {
             handleAPIByRule(stmt, inst, apiRule, defNode, defRec, sg);
         } else if ((apiRule = APISourceCorrelationRules.getRule(sig)) != null) {
-            handleAPISourceByRule(stmt, inst, apiRule, defNode, defRec, sg);
+            handleAPISourceByRule(stmt, apiRule, defNode, sg);
         } else {
             int apiConstraint = TypingConstraint.GE;
             if (SpecialModel.isSpecialModel(inst)) {
@@ -814,24 +740,21 @@ public class TypingGraphUtil {
                 for (int cdx = 0; cdx < nConstVar; cdx++) {
                     TypingNode cNode = constNodes[cdx];
                     TypingRecord cRec = currentTypingGraph.findOrCreateTypingRecord(cNode.getGraphNodeId());
-                    TypingConstraint c = new TypingConstraint(
-                            pNode.getGraphNodeId(), TypingConstraint.GE,
-                            cNode.getGraphNodeId());
+                    TypingConstraint c =
+                            new TypingConstraint(pNode.getGraphNodeId(), TypingConstraint.GE, cNode.getGraphNodeId());
                     c.addPath(stmt);
                     cRec.addForwardTypingConstraint(c);
                 }
                 if (apiType != 2) {
                     if (thisRec != null && !skipThis) {
-                        TypingConstraint c = new TypingConstraint(
-                                thisNode.getGraphNodeId(), apiConstraint,
-                                pNode.getGraphNodeId());
+                        TypingConstraint c =
+                                new TypingConstraint(thisNode.getGraphNodeId(), apiConstraint, pNode.getGraphNodeId());
                         c.addPath(stmt);
                         pRec.addForwardTypingConstraint(c);
                         thisRec.addBackwardTypingConstraint(c);
                     } else if (defRec != null) {
-                        TypingConstraint c = new TypingConstraint(
-                                defNode.getGraphNodeId(), apiConstraint,
-                                pNode.getGraphNodeId());
+                        TypingConstraint c =
+                                new TypingConstraint(defNode.getGraphNodeId(), apiConstraint, pNode.getGraphNodeId());
                         c.addPath(stmt);
                         pRec.addForwardTypingConstraint(c);
                         defRec.addBackwardTypingConstraint(c);
@@ -843,14 +766,12 @@ public class TypingGraphUtil {
                     TypingNode cNode = constNodes[cdx];
                     TypingRecord cRec = currentTypingGraph.findOrCreateTypingRecord(cNode.getGraphNodeId());
                     if (thisRec != null && !skipThis) {
-                        TypingConstraint c = new TypingConstraint(
-                                thisNode.getGraphNodeId(), TypingConstraint.GE,
+                        TypingConstraint c = new TypingConstraint(thisNode.getGraphNodeId(), TypingConstraint.GE,
                                 cNode.getGraphNodeId());
                         c.addPath(stmt);
                         cRec.addForwardTypingConstraint(c);
                     } else if (defRec != null) {
-                        TypingConstraint c = new TypingConstraint(
-                                defNode.getGraphNodeId(), TypingConstraint.GE,
+                        TypingConstraint c = new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.GE,
                                 cNode.getGraphNodeId());
                         c.addPath(stmt);
                         cRec.addForwardTypingConstraint(c);
@@ -859,9 +780,8 @@ public class TypingGraphUtil {
                 }
             }
             if (thisRec != null && !skipThis && defRec != null && apiType != 2) {
-                TypingConstraint c = new TypingConstraint(
-                        defNode.getGraphNodeId(), apiConstraint,
-                        thisNode.getGraphNodeId());
+                TypingConstraint c =
+                        new TypingConstraint(defNode.getGraphNodeId(), apiConstraint, thisNode.getGraphNodeId());
                 c.addPath(stmt);
                 thisRec.addForwardTypingConstraint(c);
                 // if (apiConstraint != TypingConstraint.GE_UNIDIR)
@@ -878,51 +798,43 @@ public class TypingGraphUtil {
         }
     }
 
-    private static void handleStringBuilderAppend(Statement stmt,
-                                                  CGNode cgNode, TypingNode defNode, TypingRecord defRec,
-                                                  TypingNode thisNode, TypingRecord thisRec, TypingNode paramNode) {
+    private static void handleStringBuilderAppend(Statement stmt, CGNode cgNode, TypingNode defNode,
+                                                  TypingRecord defRec, TypingNode thisNode, TypingRecord thisRec,
+                                                  TypingNode paramNode) {
         TypingRecord paramRec = currentTypingGraph.findOrCreateTypingRecord(paramNode.getGraphNodeId());
         if (paramNode.isConstant()) {
             String str;
             if (paramNode.isString()) {
-                str = cgNode.getIR()
-                        .getSymbolTable()
-                        .getStringValue(paramNode.value);
+                str = cgNode.getIR().getSymbolTable().getStringValue(paramNode.value);
             } else {
-                str = cgNode.getIR()
-                        .getSymbolTable()
-                        .getConstantValue(paramNode.value)
-                        .toString();
+                str = cgNode.getIR().getSymbolTable().getConstantValue(paramNode.value).toString();
             }
             thisRec.addTypingAppend(str);
         } else {
             thisRec.addTypingAppend(paramNode.getGraphNodeId());
         }
-        TypingConstraint c = new TypingConstraint(thisNode.getGraphNodeId(),
-                TypingConstraint.GE_APPEND, paramNode.getGraphNodeId());
+        TypingConstraint c =
+                new TypingConstraint(thisNode.getGraphNodeId(), TypingConstraint.GE_APPEND, paramNode.getGraphNodeId());
         paramRec.addForwardTypingConstraint(c);
         thisRec.addBackwardTypingConstraint(c);
         if (defRec != null) {
             defRec.addTypingAppend(thisRec);
-            c = new TypingConstraint(defNode.getGraphNodeId(),
-                    TypingConstraint.GE_APPEND, paramNode.getGraphNodeId());
+            c = new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.GE_APPEND, paramNode.getGraphNodeId());
             c.addPath(stmt);
             paramRec.addForwardTypingConstraint(c);
             defRec.addBackwardTypingConstraint(c);
-            c = new TypingConstraint(defNode.getGraphNodeId(),
-                    TypingConstraint.GE_APPEND, thisNode.getGraphNodeId());
+            c = new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.GE_APPEND, thisNode.getGraphNodeId());
             c.addPath(stmt);
             thisRec.addForwardTypingConstraint(c);
             defRec.addBackwardTypingConstraint(c);
         }
     }
 
-    private static void handleStringBuilderToString(Statement stmt,
-                                                    TypingNode defNode, TypingRecord defRec, TypingNode thisNode,
-                                                    TypingRecord thisRec) {
+    private static void handleStringBuilderToString(Statement stmt, TypingNode defNode, TypingRecord defRec,
+                                                    TypingNode thisNode, TypingRecord thisRec) {
         if (defRec != null) {
-            TypingConstraint c = new TypingConstraint(defNode.getGraphNodeId(),
-                    TypingConstraint.EQ, thisNode.getGraphNodeId());
+            TypingConstraint c =
+                    new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.EQ, thisNode.getGraphNodeId());
             c.addPath(stmt);
             thisRec.addForwardTypingConstraint(c);
             defRec.addBackwardTypingConstraint(c);
@@ -930,16 +842,14 @@ public class TypingGraphUtil {
 
     }
 
-    private static void handleAPIByRule(Statement stmt,
-                                        SSAAbstractInvokeInstruction inst, String rule, TypingNode defNode,
-                                        TypingRecord defRec, TypingSubGraph sg) {
+    private static void handleAPIByRule(Statement stmt, SSAAbstractInvokeInstruction inst, String rule,
+                                        TypingNode defNode, TypingRecord defRec, TypingSubGraph sg) {
         String[] rules = rule.split(",");
-        int nRules = rules.length;
         int[] ruleRep = new int[3];
         TypingNode leftNode = null, rightNode = null;
         TypingRecord leftRec = null, rightRec = null;
-        for (int i = 0; i < nRules; i++) {
-            String R = rules[i].trim();
+        for (String s : rules) {
+            String R = s.trim();
             ruleRep[1] = APIPropagationRules.NOTHING;
             APIPropagationRules.parseRule(R, ruleRep);
             if (ruleRep[1] == APIPropagationRules.NOTHING) {
@@ -972,18 +882,18 @@ public class TypingGraphUtil {
             if (leftRec != null && rightRec != null) {
                 TypingConstraint c;
                 if (op == APIPropagationRules.LEFT_PROP) {
-                    c = new TypingConstraint(leftNode.getGraphNodeId(),
-                            TypingConstraint.GE, rightNode.getGraphNodeId());
+                    c = new TypingConstraint(leftNode.getGraphNodeId(), TypingConstraint.GE,
+                            rightNode.getGraphNodeId());
                     c.addPath(stmt);
                     rightRec.addForwardTypingConstraint(c);
                 } else if (op == APIPropagationRules.RIGHT_PROP) {
-                    c = new TypingConstraint(rightNode.getGraphNodeId(),
-                            TypingConstraint.GE, leftNode.getGraphNodeId());
+                    c = new TypingConstraint(rightNode.getGraphNodeId(), TypingConstraint.GE,
+                            leftNode.getGraphNodeId());
                     c.addPath(stmt);
                     leftRec.addForwardTypingConstraint(c);
                 } else { // dual propagation
-                    c = new TypingConstraint(leftNode.getGraphNodeId(),
-                            TypingConstraint.GE, rightNode.getGraphNodeId());
+                    c = new TypingConstraint(leftNode.getGraphNodeId(), TypingConstraint.GE,
+                            rightNode.getGraphNodeId());
                     c.addPath(stmt);
                     leftRec.addBackwardTypingConstraint(c);
                     rightRec.addForwardTypingConstraint(c);
@@ -992,25 +902,22 @@ public class TypingGraphUtil {
         }
     }
 
-    private static void handleAPISourceByRule(Statement stmt,
-                                              SSAAbstractInvokeInstruction inst, String rule, TypingNode defNode,
-                                              TypingRecord defRec, TypingSubGraph sg) {
+    private static void handleAPISourceByRule(Statement stmt, String rule, TypingNode defNode, TypingSubGraph sg) {
         TypingNode fakeNode = sg.createFakeConstantNode();
         TypingRecord fakeRec = currentTypingGraph.findOrCreateTypingRecord(fakeNode.getGraphNodeId());
         fakeRec.addTypingText(rule);
-        TypingConstraint c = new TypingConstraint(defNode.getGraphNodeId(),
-                TypingConstraint.GE_UNIDIR, fakeNode.getGraphNodeId());
+        TypingConstraint c =
+                new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.GE_UNIDIR, fakeNode.getGraphNodeId());
         c.addPath(stmt);
         fakeRec.addForwardTypingConstraint(c);
     }
 
-    private static void handleSSAPhi(CGNode cgNode, PhiStatement stmt,
-                                     SSAPhiInstruction inst, TypingSubGraph sg) {
+    private static void handleSSAPhi(PhiStatement stmt, SSAPhiInstruction inst, TypingSubGraph sg) {
         int def = inst.getDef();
         int nUse = inst.getNumberOfUses();
         TypingNode defNode = sg.findOrCreate(def);
         // logger.info("PHI: {}", inst.toString());
-        Set<Integer> dupSet = new HashSet<Integer>();
+        Set<Integer> dupSet = new HashSet<>();
         TypingRecord defRec = sg.typingGraph.findOrCreateTypingRecord(defNode.getGraphNodeId());
         for (int i = 0; i < nUse; i++) {
             // logger.info(" i = {}:{}", i, inst.getUse(i));
@@ -1024,8 +931,8 @@ public class TypingGraphUtil {
             dupSet.add(valueNumber);
             TypingNode useNode = sg.findOrCreate(valueNumber);
             TypingRecord useRec = sg.typingGraph.findOrCreateTypingRecord(useNode.getGraphNodeId());
-            TypingConstraint c = new TypingConstraint(defNode.getGraphNodeId(),
-                    TypingConstraint.GE_PHI, useNode.getGraphNodeId());
+            TypingConstraint c =
+                    new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.GE_PHI, useNode.getGraphNodeId());
             defRec.addBackwardTypingConstraint(c);
             useRec.addForwardTypingConstraint(c);
             c.addPath(stmt);
@@ -1052,11 +959,9 @@ public class TypingGraphUtil {
         }
     }
 
-    private static void revisitInvokeInstruction(SSACFG cfg,
-                                                 SymbolTable symTable, SSAAbstractInvokeInstruction inst,
+    private static void revisitInvokeInstruction(SSACFG cfg, SymbolTable symTable, SSAAbstractInvokeInstruction inst,
                                                  TypingSubGraph sg) {
-        List<TypingNode> potentialGNodes = potentialGStringNode(symTable, inst,
-                sg);
+        List<TypingNode> potentialGNodes = potentialGStringNode(symTable, inst, sg);
         if (potentialGNodes != null) {
             SSACFG.BasicBlock locatedBB = cfg.getBlockForInstruction(inst.iIndex());
             List<ISSABasicBlock> worklist = new LinkedList<ISSABasicBlock>();
@@ -1064,36 +969,33 @@ public class TypingGraphUtil {
             worklist.add(locatedBB);
             forwardObtainBBsInLine(cfg, worklist, storedBBs);
             for (ISSABasicBlock bb : storedBBs) {
-                typingGlobalStringInBB(cfg, symTable, bb, potentialGNodes, sg,
-                        inst, true);
+                typingGlobalStringInBB(cfg, symTable, bb, potentialGNodes, sg, inst, true);
             }
             worklist.add(locatedBB);
             storedBBs.clear();
             backwardObtainBBsInLine(cfg, worklist, storedBBs);
             storedBBs.remove(locatedBB);
             for (ISSABasicBlock bb : storedBBs) {
-                typingGlobalStringInBB(cfg, symTable, bb, potentialGNodes, sg,
-                        inst, false);
+                typingGlobalStringInBB(cfg, symTable, bb, potentialGNodes, sg, inst, false);
             }
             worklist = null;
             storedBBs = null;
         }
     }
 
-    private static void forwardObtainBBsInLine(SSACFG cfg,
-                                               List<ISSABasicBlock> worklist, Set<ISSABasicBlock> storedBBs) {
+    private static void forwardObtainBBsInLine(SSACFG cfg, List<ISSABasicBlock> worklist,
+                                               Set<ISSABasicBlock> storedBBs) {
         ISSABasicBlock bb;
         if (worklist.isEmpty()) {
             return;
         }
-        bb = worklist.remove(0);
+        bb = worklist.removeFirst();
         if (bb.isExitBlock() || cfg.getPredNodeCount(bb) > 1) {
             return;
         }
         storedBBs.add(bb);
         SSAInstruction lastInst = bb.getLastInstruction();
-        if (!(lastInst instanceof SSAConditionalBranchInstruction)
-                && !(lastInst instanceof SSASwitchInstruction)) {
+        if (!(lastInst instanceof SSAConditionalBranchInstruction) && !(lastInst instanceof SSASwitchInstruction)) {
             Iterator<ISSABasicBlock> iter = cfg.getSuccNodes(bb);
             while (iter.hasNext()) {
                 ISSABasicBlock succ = iter.next();
@@ -1107,13 +1009,13 @@ public class TypingGraphUtil {
         forwardObtainBBsInLine(cfg, worklist, storedBBs);
     }
 
-    private static void backwardObtainBBsInLine(SSACFG cfg,
-                                                List<ISSABasicBlock> worklist, Set<ISSABasicBlock> storedBBs) {
+    private static void backwardObtainBBsInLine(SSACFG cfg, List<ISSABasicBlock> worklist,
+                                                Set<ISSABasicBlock> storedBBs) {
         ISSABasicBlock bb;
         if (worklist.isEmpty()) {
             return;
         }
-        bb = worklist.remove(0);
+        bb = worklist.removeFirst();
         if (bb.isEntryBlock() || cfg.getPredNodeCount(bb) > 1) {
             return;
         }
@@ -1121,12 +1023,11 @@ public class TypingGraphUtil {
         Iterator<ISSABasicBlock> iter = cfg.getPredNodes(bb);
         while (iter.hasNext()) {
             ISSABasicBlock pred = iter.next();
-			if (pred.isEntryBlock()) {
-				continue;
-			}
+            if (pred.isEntryBlock()) {
+                continue;
+            }
             SSAInstruction lastInst = pred.getLastInstruction();
-            if ((lastInst instanceof SSAConditionalBranchInstruction)
-                    || (lastInst instanceof SSASwitchInstruction)) {
+            if ((lastInst instanceof SSAConditionalBranchInstruction) || (lastInst instanceof SSASwitchInstruction)) {
                 storedBBs.add(pred);
             } else {
                 worklist.add(pred);
@@ -1135,8 +1036,8 @@ public class TypingGraphUtil {
         backwardObtainBBsInLine(cfg, worklist, storedBBs);
     }
 
-    private static List<TypingNode> potentialGStringNode(SymbolTable symTable,
-                                                         SSAAbstractInvokeInstruction inst, TypingSubGraph sg) {
+    private static List<TypingNode> potentialGStringNode(SymbolTable symTable, SSAAbstractInvokeInstruction inst,
+                                                         TypingSubGraph sg) {
         List<TypingNode> nodes = null;
         String sig = WalaUtil.getSignature(inst);
         String loc = TypingGraphConfig.getPotentialGStringLoc(sig);
@@ -1150,8 +1051,7 @@ public class TypingGraphUtil {
                     if (!inst.isStatic()) {
                         lc -= 1;
                     }
-                    TypeReference type = inst.getDeclaredTarget()
-                            .getParameterType(lc);
+                    TypeReference type = inst.getDeclaredTarget().getParameterType(lc);
                     if (type.isPrimitiveType()) {
                         // TODO
                     } else if (symTable.isStringConstant(useVal)) {
@@ -1171,16 +1071,14 @@ public class TypingGraphUtil {
     }
 
     // remove support for normal definition stmt; only support branch stmt.
-    private static void typingGlobalStringInBB(SSACFG cfg,
-                                               SymbolTable symTable, ISSABasicBlock bb,
+    private static void typingGlobalStringInBB(SSACFG cfg, SymbolTable symTable, ISSABasicBlock bb,
                                                List<TypingNode> potentialGNodes, TypingSubGraph sg,
                                                SSAAbstractInvokeInstruction invoke, boolean forward) {
         if (forward) {
             for (int i = bb.getFirstInstructionIndex(); i <= bb.getLastInstructionIndex(); i++) {
                 SSAInstruction inst = cfg.getInstructions()[i];
-                if (inst == null
-                        || inst instanceof SSAConditionalBranchInstruction
-                        || inst instanceof SSASwitchInstruction) {
+                if (inst == null || inst instanceof SSAConditionalBranchInstruction ||
+                        inst instanceof SSASwitchInstruction) {
                     break;
                 }
                 // System.err.println("[" + i + "]" + inst);
@@ -1192,10 +1090,8 @@ public class TypingGraphUtil {
                 SSAInstruction inst = cfg.getInstructions()[i];
                 if (inst == null) {
                     break;
-                } else if (inst instanceof SSAConditionalBranchInstruction
-                        || inst instanceof SSASwitchInstruction) {
-                    typingGlobalStringInInstruction(symTable, inst,
-                            potentialGNodes, sg, invoke);
+                } else if (inst instanceof SSAConditionalBranchInstruction || inst instanceof SSASwitchInstruction) {
+                    typingGlobalStringInInstruction(symTable, inst, potentialGNodes, sg, invoke);
                     break;
                 }
                 // typingGlobalStringInInstruction(symTable, inst,
@@ -1204,16 +1100,15 @@ public class TypingGraphUtil {
         }
     }
 
-    private static void typingGlobalStringInInstruction(SymbolTable symTable,
-                                                        SSAInstruction inst, List<TypingNode> potentialGNodes,
-                                                        TypingSubGraph sg, SSAAbstractInvokeInstruction invoke) {
+    private static void typingGlobalStringInInstruction(SymbolTable symTable, SSAInstruction inst,
+                                                        List<TypingNode> potentialGNodes, TypingSubGraph sg,
+                                                        SSAAbstractInvokeInstruction invoke) {
         int val = -1, extraVal = -1;
         if (inst instanceof SSAPutInstruction) {
             val = ((SSAPutInstruction) inst).getVal();
         } else if (inst instanceof SSAArrayStoreInstruction) {
             val = ((SSAArrayStoreInstruction) inst).getValue();
-        } else if (inst instanceof SSAConditionalBranchInstruction) {
-            SSAConditionalBranchInstruction cond = (SSAConditionalBranchInstruction) inst;
+        } else if (inst instanceof SSAConditionalBranchInstruction cond) {
             val = cond.getUse(0);
             extraVal = cond.getUse(1);
         } else if (inst instanceof SSASwitchInstruction) {
@@ -1229,9 +1124,8 @@ public class TypingGraphUtil {
                 for (TypingNode n : potentialGNodes) {
                     // currentTypingGraph.mergeClass(n, valNode);
                     TypingRecord rec = currentTypingGraph.findOrCreateTypingRecord(n.getGraphNodeId());
-                    TypingConstraint c = new TypingConstraint(
-                            valNode.getGraphNodeId(), TypingConstraint.GE,
-                            n.getGraphNodeId());
+                    TypingConstraint c =
+                            new TypingConstraint(valNode.getGraphNodeId(), TypingConstraint.GE, n.getGraphNodeId());
                     // a simply way to get the corresponding statement of the
                     // alert inst to act as the path element (I think it usually
                     // fails)
@@ -1256,9 +1150,9 @@ public class TypingGraphUtil {
                                 }
                             }
                         }
-						if (found) {
-							break;
-						}
+                        if (found) {
+                            break;
+                        }
                     }
                     rec.addForwardTypingConstraint(c);
                     // valRec.addBackwardTypingConstraint(c);
@@ -1272,9 +1166,8 @@ public class TypingGraphUtil {
                 for (TypingNode n : potentialGNodes) {
                     // currentTypingGraph.mergeClass(n, extraNode);
                     TypingRecord rec = currentTypingGraph.findOrCreateTypingRecord(n.getGraphNodeId());
-                    TypingConstraint c = new TypingConstraint(
-                            extraNode.getGraphNodeId(), TypingConstraint.GE,
-                            n.getGraphNodeId());
+                    TypingConstraint c =
+                            new TypingConstraint(extraNode.getGraphNodeId(), TypingConstraint.GE, n.getGraphNodeId());
                     // a simply way to get the corresponding statement of the
                     // alert inst to act as the path element (I think it usually
                     // fails)
@@ -1299,9 +1192,9 @@ public class TypingGraphUtil {
                                 }
                             }
                         }
-						if (found) {
-							break;
-						}
+                        if (found) {
+                            break;
+                        }
                     }
                     rec.addForwardTypingConstraint(c);
                     // extraRec.addBackwardTypingConstraint(c);
@@ -1314,18 +1207,18 @@ public class TypingGraphUtil {
     /******************** Typing Propagation ********************/
     /************************************************************/
     private static void propagate() {
-        List<TypingRecord> worklist = new LinkedList<TypingRecord>();
+        List<TypingRecord> worklist = new LinkedList<>();
         // PASS 1: forward
         initWorklistPassOne(worklist);
         // currentTypingGraph.simplify();
         while (!worklist.isEmpty()) {
-            TypingRecord rec = worklist.remove(0);
+            TypingRecord rec = worklist.removeFirst();
             propagateOneRecordForward(rec, worklist);
         }
         // PASS 2: forward & backward
         initWorklistPassTwo(worklist);
         while (!worklist.isEmpty()) {
-            TypingRecord rec = worklist.remove(0);
+            TypingRecord rec = worklist.removeFirst();
             propagateOneRecordBackward(rec, worklist);
             propagateOneRecordForward(rec, worklist);
             TypingNode node = currentTypingGraph.getNode(rec.initialId);
@@ -1373,9 +1266,7 @@ public class TypingGraphUtil {
                 // currentTypingGraph.findOrCreateTypingRecord(tn.getGraphNodeId());
                 // }
                 if (tn.isString()) {
-                    String text = tn.cgNode.getIR()
-                            .getSymbolTable()
-                            .getStringValue(tn.value);
+                    String text = tn.cgNode.getIR().getSymbolTable().getStringValue(tn.value);
                     if (text != null) {
                         text = text.trim();
                         if (!text.isEmpty()) {
@@ -1386,9 +1277,7 @@ public class TypingGraphUtil {
                 } else if (tn.isFakeString()) {
                     worklist.add(rec);
                 } else {
-                    Object o = tn.cgNode.getIR()
-                            .getSymbolTable()
-                            .getConstantValue(tn.value);
+                    Object o = tn.cgNode.getIR().getSymbolTable().getConstantValue(tn.value);
                     rec.addTypingConstant(o);
                     worklist.add(rec);
                 }
@@ -1408,10 +1297,8 @@ public class TypingGraphUtil {
                     // + matcher.group(1));
                     String matched = matcher.group(1);
                     int vStartIdx = matched.indexOf(TypingRecord.APPEND_VAR_PREFIX);
-                    String varStr = matched.substring(
-                            vStartIdx + TypingRecord.APPEND_VAR_PREFIX.length(),
-                            matched.length()
-                                    - TypingRecord.APPEND_VAR_POSTFIX.length());
+                    String varStr = matched.substring(vStartIdx + TypingRecord.APPEND_VAR_PREFIX.length(),
+                            matched.length() - TypingRecord.APPEND_VAR_POSTFIX.length());
                     int seperatorIdx = matched.indexOf('=');
                     if (seperatorIdx <= 0) {
                         seperatorIdx = matched.indexOf(':');
@@ -1425,8 +1312,7 @@ public class TypingGraphUtil {
         }
     }
 
-    private static boolean propagateOneRecordForward(TypingRecord record,
-                                                     List<TypingRecord> worklist) {
+    private static boolean propagateOneRecordForward(TypingRecord record, List<TypingRecord> worklist) {
         boolean changed = false;
         Set<TypingConstraint> constraints = record.getForwardTypingConstraints();
         for (TypingConstraint ct : constraints) {
@@ -1434,8 +1320,7 @@ public class TypingGraphUtil {
             TypingNode nextNode = currentTypingGraph.getNode(nextId);
             TypingRecord nextRec = currentTypingGraph.getTypingRecord(nextId);
             // System.err.println(record.getTypingTexts());
-            if (nextNode != null && !nextNode.isConstant()
-                    && nextRec.merge(record, ct.getPath())) {
+            if (nextNode != null && !nextNode.isConstant() && nextRec.merge(record, ct.getPath())) {
                 worklist.add(nextRec);
                 changed = true;
                 if (ct.sym == TypingConstraint.EQ) {
@@ -1454,15 +1339,13 @@ public class TypingGraphUtil {
         while (iter.hasNext()) {
             Map.Entry<SimpleGraphNode, TypingRecord> entry = iter.next();
             TypingRecord record = entry.getValue();
-            if (record.hasBackwardConstraints()
-                    && (record.hasConstants() || record.hasExternalFields())) {
+            if (record.hasBackwardConstraints() && (record.hasConstants() || record.hasExternalFields())) {
                 worklist.add(record);
             }
         }
     }
 
-    private static boolean propagateOneRecordBackward(TypingRecord record,
-                                                      List<TypingRecord> worklist) {
+    private static boolean propagateOneRecordBackward(TypingRecord record, List<TypingRecord> worklist) {
         boolean changed = false;
         Set<TypingConstraint> constraints = record.getBackwardTypingConstraints();
         List<TypingConstraint> geAssignList = new LinkedList<TypingConstraint>();
@@ -1474,8 +1357,7 @@ public class TypingGraphUtil {
             TypingRecord nextRec = currentTypingGraph.getTypingRecord(nextId);
             if (sym == TypingConstraint.EQ || sym == TypingConstraint.GE) {
                 nextNode = currentTypingGraph.getNode(nextId);
-                if (nextNode != null && !nextNode.isConstant()
-                        && nextRec.merge(record, ct.getPath())) {
+                if (nextNode != null && !nextNode.isConstant() && nextRec.merge(record, ct.getPath())) {
                     worklist.add(nextRec);
                     changed = true;
                 }
@@ -1483,8 +1365,7 @@ public class TypingGraphUtil {
                 geAssignList.add(ct);
             } else if (sym == TypingConstraint.GE_APPEND) {
                 nextNode = currentTypingGraph.getNode(nextId);
-                if (nextNode != null && !nextNode.isConstant()
-                        && nextRec.mergeIfEmptyTexts(record, ct.getPath())) {
+                if (nextNode != null && !nextNode.isConstant() && nextRec.mergeIfEmptyTexts(record, ct.getPath())) {
                     worklist.add(nextRec);
                     changed = true;
                 }
@@ -1497,25 +1378,21 @@ public class TypingGraphUtil {
         }
         int galSize = geAssignList.size();
         if (galSize == 1) {
-            TypingConstraint c = geAssignList.remove(0);
+            TypingConstraint c = geAssignList.removeFirst();
             TypingNode nextNode = currentTypingGraph.getNode(c.rhs);
             TypingRecord nextRec = currentTypingGraph.getTypingRecord(c.rhs);
-            if (nextNode != null && !nextNode.isConstant()
-                    && nextRec.merge(record, c.getPath())) {
+            if (nextNode != null && !nextNode.isConstant() && nextRec.merge(record, c.getPath())) {
                 worklist.add(nextRec);
                 changed = true;
             }
         } else if (galSize > 1) {
             if (galSize > 2) {
-                logger.error("    ? Wrong assignment with {} RHS: {}", galSize,
-                        geAssignList.toString());
+                logger.error("    ? Wrong assignment with {} RHS: {}", galSize, geAssignList.toString());
             } else {
-                TypingConstraint tc0 = geAssignList.remove(0);
-                TypingConstraint tc1 = geAssignList.remove(0);
+                TypingConstraint tc0 = geAssignList.removeFirst();
+                TypingConstraint tc1 = geAssignList.removeFirst();
                 if (tc0.lhs != tc1.lhs) {
-                    logger.error(
-                            "    ? Wrong Assignment with different LHS: {} -- {}",
-                            tc0.toString(), tc1.toString());
+                    logger.error("    ? Wrong Assignment with different LHS: {} -- {}", tc0.toString(), tc1.toString());
                 } else {
                     TypingRecord rec0 = currentTypingGraph.getTypingRecord(tc0.rhs);
                     TypingRecord rec1 = currentTypingGraph.getTypingRecord(tc1.rhs);
@@ -1526,8 +1403,7 @@ public class TypingGraphUtil {
                     Map<String, List<Statement>> texts = record.getTypingTexts();
                     if (!texts.isEmpty()) {
                         if (texts0.isEmpty() && texts1.isEmpty()) {
-                            Map<String, List<Statement>> tmp = new HashMap<String, List<Statement>>();
-                            tmp.putAll(texts);
+                            Map<String, List<Statement>> tmp = new HashMap<>(texts);
                             Set<Map.Entry<String, List<Statement>>> set = tmp.entrySet();
                             for (Map.Entry<String, List<Statement>> entry : set) {
                                 List<Statement> path = entry.getValue();
@@ -1564,11 +1440,11 @@ public class TypingGraphUtil {
                                         path.addAll(tc0.getPath());
                                     }
                                 }
-								if (isZero) {
-									changed0 = true;
-								} else {
-									changed1 = true;
-								}
+                                if (isZero) {
+                                    changed0 = true;
+                                } else {
+                                    changed1 = true;
+                                }
                             }
                         }
                     }
@@ -1596,11 +1472,11 @@ public class TypingGraphUtil {
                             empty.addAll(constr);
                             empty.removeAll(nonEmpty);
                             if (!empty.isEmpty()) {
-								if (isZero) {
-									changed0 = true;
-								} else {
-									changed1 = true;
-								}
+                                if (isZero) {
+                                    changed0 = true;
+                                } else {
+                                    changed1 = true;
+                                }
                             }
                         }
                     }
@@ -1610,8 +1486,7 @@ public class TypingGraphUtil {
                     Map<SimpleGraphNode, List<Statement>> inputs = record.getInputFields();
                     if (!inputs.isEmpty()) {
                         if (input0.isEmpty() && input1.isEmpty()) {
-                            Map<SimpleGraphNode, List<Statement>> tmp = new HashMap<SimpleGraphNode, List<Statement>>();
-                            tmp.putAll(inputs);
+                            Map<SimpleGraphNode, List<Statement>> tmp = new HashMap<>(inputs);
                             Set<Map.Entry<SimpleGraphNode, List<Statement>>> set = tmp.entrySet();
                             for (Map.Entry<SimpleGraphNode, List<Statement>> entry : set) {
                                 List<Statement> path = entry.getValue();
@@ -1642,11 +1517,11 @@ public class TypingGraphUtil {
                                         path.addAll(tc0.getPath());
                                     }
                                 }
-								if (isZero) {
-									changed0 = true;
-								} else {
-									changed1 = true;
-								}
+                                if (isZero) {
+                                    changed0 = true;
+                                } else {
+                                    changed1 = true;
+                                }
                             }
                         }
                     }
@@ -1656,8 +1531,7 @@ public class TypingGraphUtil {
                     Map<SimpleGraphNode, List<Statement>> outputs = record.getOutputFields();
                     if (!outputs.isEmpty()) {
                         if (output0.isEmpty() && output1.isEmpty()) {
-                            Map<SimpleGraphNode, List<Statement>> tmp = new HashMap<SimpleGraphNode, List<Statement>>();
-                            tmp.putAll(outputs);
+                            Map<SimpleGraphNode, List<Statement>> tmp = new HashMap<>(outputs);
                             Set<Map.Entry<SimpleGraphNode, List<Statement>>> set = tmp.entrySet();
                             for (Map.Entry<SimpleGraphNode, List<Statement>> entry : set) {
                                 List<Statement> path = entry.getValue();
@@ -1688,11 +1562,11 @@ public class TypingGraphUtil {
                                         path.addAll(tc0.getPath());
                                     }
                                 }
-								if (isZero) {
-									changed0 = true;
-								} else {
-									changed1 = true;
-								}
+                                if (isZero) {
+                                    changed0 = true;
+                                } else {
+                                    changed1 = true;
+                                }
                             }
                         }
                     }
@@ -1709,8 +1583,7 @@ public class TypingGraphUtil {
             }
         }
         if (!phiList.isEmpty()) {
-            changed = backwardPropagateForPhi(record, worklist, phiList)
-                    | changed;
+            changed = backwardPropagateForPhi(record, worklist, phiList) | changed;
         }
         return changed;
     }
@@ -1721,46 +1594,38 @@ public class TypingGraphUtil {
      * x = phi x1, x2, ..., xn, and T(x) = T(x1) \/ T(x2) \/ ... \/ T(xn) \/
      * T(y). We propagate T(x) to xi as: T'(xi) = T(x) - \/T(xj)[x!=j], i.e.,
      * T'(xi) = T(xi) \/ T(y).
-     *
-     * @param record
-     * @param worklist
-     * @param phiList
-     * @return
      */
-    private static boolean backwardPropagateForPhi(TypingRecord record,
-                                                   List<TypingRecord> worklist, List<TypingConstraint> phiList) {
-        Set<String> tmpTexts = new HashSet<String>();
-        Set<Object> tmpConst = new HashSet<Object>();
-        Set<SimpleGraphNode> tmpInputs = new HashSet<SimpleGraphNode>();
-        Set<SimpleGraphNode> tmpOutputs = new HashSet<SimpleGraphNode>();
+    private static boolean backwardPropagateForPhi(TypingRecord record, List<TypingRecord> worklist,
+                                                   List<TypingConstraint> phiList) {
+        Set<String> tmpTexts = new HashSet<>();
+        Set<Object> tmpConst = new HashSet<>();
+        Set<SimpleGraphNode> tmpInputs = new HashSet<>();
+        Set<SimpleGraphNode> tmpOutputs = new HashSet<>();
         Map<String, List<Statement>> recTexts = record.getTypingTexts();
         Set<Object> recConsts = record.getTypingConstants();
         Map<SimpleGraphNode, List<Statement>> recInputs = record.getInputFields();
         Map<SimpleGraphNode, List<Statement>> recOutputs = record.getOutputFields();
-        int n = phiList.size();
         TypingConstraint tc;
         TypingNode tn;
         boolean changed = false;
         // store all current states for all phi nodes
-        Set<String> allTexts = new HashSet<String>();
-        Set<Object> allConst = new HashSet<Object>();
-        Set<SimpleGraphNode> allInputs = new HashSet<SimpleGraphNode>();
-        Set<SimpleGraphNode> allOutputs = new HashSet<SimpleGraphNode>();
-        for (int i = 0; i < n; i++) {
-            tc = phiList.get(i);
-            TypingRecord tr = currentTypingGraph.getTypingRecord(tc.rhs);
+        Set<String> allTexts = new HashSet<>();
+        Set<Object> allConst = new HashSet<>();
+        Set<SimpleGraphNode> allInputs = new HashSet<>();
+        Set<SimpleGraphNode> allOutputs = new HashSet<>();
+        for (TypingConstraint typingConstraint : phiList) {
+            TypingRecord tr = currentTypingGraph.getTypingRecord(typingConstraint.rhs);
             allTexts.addAll(tr.getTypingTexts().keySet());
             allConst.addAll(tr.getTypingConstants());
             allInputs.addAll(tr.getInputFields().keySet());
             allOutputs.addAll(tr.getOutputFields().keySet());
         }
-        for (int i = 0; i < n; i++) {
-            tc = phiList.get(i);
-            tn = currentTypingGraph.getNode(tc.rhs);
+        for (TypingConstraint typingConstraint : phiList) {
+            tn = currentTypingGraph.getNode(typingConstraint.rhs);
             if (tn == null || tn.isConstant()) {
                 continue;
             }
-            TypingRecord tr = currentTypingGraph.getTypingRecord(tc.rhs);
+            TypingRecord tr = currentTypingGraph.getTypingRecord(typingConstraint.rhs);
             tmpTexts.addAll(recTexts.keySet());
             tmpConst.addAll(recConsts);
             tmpInputs.addAll(recInputs.keySet());
@@ -1780,8 +1645,7 @@ public class TypingGraphUtil {
                 List<Statement> existingPath = recTexts.get(t);
                 List<Statement> path = null;
                 if (existingPath != null) {
-                    path = new LinkedList<Statement>();
-                    path.addAll(tc.getPath());
+                    path = new LinkedList<>(typingConstraint.getPath());
                 }
                 targetTexts.put(t, path);
             }
@@ -1792,8 +1656,7 @@ public class TypingGraphUtil {
                 List<Statement> existingPath = recInputs.get(sgn);
                 List<Statement> path = null;
                 if (existingPath != null) {
-                    path = new LinkedList<Statement>();
-                    path.addAll(tc.getPath());
+                    path = new LinkedList<>(typingConstraint.getPath());
                 }
                 targetInputs.put(sgn, path);
             }
@@ -1802,14 +1665,12 @@ public class TypingGraphUtil {
                 List<Statement> existingPath = recOutputs.get(sgn);
                 List<Statement> path = null;
                 if (existingPath != null) {
-                    path = new LinkedList<Statement>();
-                    path.addAll(tc.getPath());
+                    path = new LinkedList<>(typingConstraint.getPath());
                 }
                 targetOutputs.put(sgn, path);
             }
             // check if changed
-            if (!tmpTexts.isEmpty() || !tmpConst.isEmpty()
-                    || !tmpInputs.isEmpty() || !tmpOutputs.isEmpty()) {
+            if (!tmpTexts.isEmpty() || !tmpConst.isEmpty() || !tmpInputs.isEmpty() || !tmpOutputs.isEmpty()) {
                 changed = true;
                 worklist.add(tr);
             }
@@ -1826,8 +1687,7 @@ public class TypingGraphUtil {
         while (iter.hasNext()) {
             Map.Entry<SimpleGraphNode, TypingRecord> entry = iter.next();
             TypingRecord record = entry.getValue();
-            if (record.hasForwardConstraints()
-                    && (record.hasConstants() || record.hasExternalFields())) {
+            if (record.hasForwardConstraints() && (record.hasConstants() || record.hasExternalFields())) {
                 worklist.add(record);
             }
         }
