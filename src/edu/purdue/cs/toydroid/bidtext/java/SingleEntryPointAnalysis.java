@@ -146,8 +146,7 @@ public class SingleEntryPointAnalysis {
                 SSAInstruction inst = ns.getInstruction();
                 if (inst instanceof SSAAbstractInvokeInstruction) {
                     return false;
-                } else if (inst instanceof SSAGetInstruction) {
-                    SSAGetInstruction getInst = (SSAGetInstruction) inst;
+                } else if (inst instanceof SSAGetInstruction getInst) {
                     if (getInst.isStatic() && getInst.getDeclaredField()
                             .getDeclaringClass()
                             .getName()
@@ -160,11 +159,9 @@ public class SingleEntryPointAnalysis {
                 // if (sdg.getPredNodeCount(t) == 0) {
                 // return false;
                 // }
-            } else if (t instanceof HeapStatement) {
-                HeapStatement hs = (HeapStatement) t;
+            } else if (t instanceof HeapStatement hs) {
                 PointerKey pk = hs.getLocation();
-                if (pk instanceof StaticFieldKey) {
-                    StaticFieldKey sfk = (StaticFieldKey) pk;
+                if (pk instanceof StaticFieldKey sfk) {
                     if (sfk.getField()
                             .getDeclaringClass()
                             .getClassLoader()
@@ -183,11 +180,11 @@ public class SingleEntryPointAnalysis {
     }
 
     private void dumpSDG() {
-        Map<CGNode, Long> occurencesOfNodes =
+        Map<CGNode, Long> occurrencesOfNodes =
                 graph.stream().collect(Collectors.groupingBy(Statement::getNode, Collectors.counting()));
         logger.debug("************** SDG DUMP START ****************");
         logger.debug("Occurrences   x   Method");
-        occurencesOfNodes.forEach((k, v) -> logger.debug(v + "  x  " + k.getMethod().getSignature()));
+        occurrencesOfNodes.forEach((k, v) -> logger.debug(v + "  x  " + k.getMethod().getSignature()));
         logger.debug("************** SDG DUMP END ****************");
     }
 
