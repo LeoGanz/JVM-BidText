@@ -153,7 +153,7 @@ public class TextAnalysis {
             if (path == null) {
                 refined.add(text);
             } else if (!path.isEmpty()) {
-                Statement startStmt = path.get(0);
+                Statement startStmt = path.getFirst();
                 SSAInstruction instr = null;
                 if (Statement.Kind.NORMAL == startStmt.getKind()) {
                     NormalStatement nstmt = (NormalStatement) startStmt;
@@ -291,8 +291,8 @@ public class TextAnalysis {
     }
 
     private List<String> purify(Map<String, List<Statement>> texts) {
-        List<String> f = new LinkedList<String>();
-        Set<String> toRemove = new HashSet<String>();
+        List<String> f = new LinkedList<>();
+        Set<String> toRemove = new HashSet<>();
         Set<Map.Entry<String, List<Statement>>> textSet = texts.entrySet();
         for (Map.Entry<String, List<Statement>> entry : textSet) {
             String str = entry.getKey();
@@ -395,7 +395,7 @@ public class TextAnalysis {
 
     public static void main(String[] args) throws IOException {
         TextAnalysis a = new TextAnalysis();
-        Map<String, List<Statement>> l = new HashMap<String, List<Statement>>();
+        Map<String, List<Statement>> l = new HashMap<>();
         // List<String> l = new LinkedList<String>();
         l.put("enterPassword.", null);
         l.put("include user_id. do not include username. ", null);

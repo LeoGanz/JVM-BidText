@@ -6,7 +6,6 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.StaticFieldKey;
-import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.slicer.HeapStatement.HeapParamCallee;
 import com.ibm.wala.ipa.slicer.HeapStatement.HeapReturnCallee;
 import com.ibm.wala.ipa.slicer.HeapStatement.HeapReturnCaller;
@@ -33,7 +32,6 @@ public class TypingGraphUtil {
     private static TypingGraph currentTypingGraph;
     private static final Map<SSAGetInstruction, TypingNode> ssaGet2Nodes;
     private static final Map<PointerKey, TypingNode> sFieldHeaps;
-    private static ClassHierarchy cha;
     /************************************************************/
     private static Statement cachedStmt = null;
 
@@ -55,8 +53,7 @@ public class TypingGraphUtil {
         }
     }
 
-    public static void buildTypingGraph(Entrypoint ep, CallGraph cg, Graph<Statement> sdg, ClassHierarchy _cha) {
-        cha = _cha;
+    public static void buildTypingGraph(Entrypoint ep, CallGraph cg, Graph<Statement> sdg) {
         TypingGraph graph = new TypingGraph(ep);
         entry2Graph.put(ep, graph);
         currentTypingGraph = graph;
@@ -121,7 +118,7 @@ public class TypingGraphUtil {
              * && !(stmt.getKind() == Kind.HEAP_PARAM_CALLEE && stmt.getNode()
              * .equals(cg.getFakeRootNode()))
              */) {
-            List<Object> worklist = new LinkedList<Object>();
+            List<Object> worklist = new LinkedList<>();
             worklist.add(stmt);
             while (!worklist.isEmpty()) {
                 Object obj = worklist.removeFirst();
@@ -581,7 +578,7 @@ public class TypingGraphUtil {
 
     private static void handleSSAInvokeAPI(CGNode cgNode, Statement stmt, SSAAbstractInvokeInstruction inst,
                                            TypingSubGraph sg) {
-        int apiType = AnalysisUtil.tryRecordInterestingNode(inst, sg, cha);
+        int apiType = AnalysisUtil.tryRecordInterestingNode(inst, sg);
 
         int nVal, nFreeVar = 0, nConstVar = 0;
         int nParam = inst.getNumberOfPositionalParameters();
@@ -898,8 +895,8 @@ public class TypingGraphUtil {
         List<TypingNode> potentialGNodes = potentialGStringNode(symTable, inst, sg);
         if (potentialGNodes != null) {
             SSACFG.BasicBlock locatedBB = cfg.getBlockForInstruction(inst.iIndex());
-            List<ISSABasicBlock> worklist = new LinkedList<ISSABasicBlock>();
-            Set<ISSABasicBlock> storedBBs = new HashSet<ISSABasicBlock>();
+            List<ISSABasicBlock> worklist = new LinkedList<>();
+            Set<ISSABasicBlock> storedBBs = new HashSet<>();
             worklist.add(locatedBB);
             forwardObtainBBsInLine(cfg, worklist, storedBBs);
             for (ISSABasicBlock bb : storedBBs) {
@@ -991,7 +988,7 @@ public class TypingGraphUtil {
                     }
                     if (node != null) {
                         if (nodes == null) {
-                            nodes = new LinkedList<TypingNode>();
+                            nodes = new LinkedList<>();
                         }
                         nodes.add(node);
                     }
@@ -1048,7 +1045,6 @@ public class TypingGraphUtil {
         } else if (inst.hasDef()) {
             val = inst.getDef();
         }
-        TypingNode valNode, extraNode;
         typingGlobalStringInInstruction_processNode(symTable, potentialGNodes, sg, invoke, val);
         typingGlobalStringInInstruction_processNode(symTable, potentialGNodes, sg, invoke, extraVal);
     }

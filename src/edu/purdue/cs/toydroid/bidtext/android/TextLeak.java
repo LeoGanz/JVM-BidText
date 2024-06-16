@@ -246,7 +246,7 @@ public class TextLeak implements Callable<TextLeak> {
             // logger.info(" * Empty SDG. No interesting stmt found.");
             // } else {
             logger.info(" * Build TypingGraph");
-            TypingGraphUtil.buildTypingGraph(entrypoint, cg, g, cha);
+            TypingGraphUtil.buildTypingGraph(entrypoint, cg, g);
             // }
             epList.clear();
         }

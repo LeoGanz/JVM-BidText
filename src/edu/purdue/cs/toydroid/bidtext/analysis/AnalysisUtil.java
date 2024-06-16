@@ -2,7 +2,6 @@ package edu.purdue.cs.toydroid.bidtext.analysis;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
-import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.slicer.NormalStatement;
 import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ssa.*;
@@ -19,9 +18,9 @@ import java.util.*;
 public class AnalysisUtil {
     private static final Logger logger = LogManager.getLogger(AnalysisUtil.class);
 
-    private static final Set<InterestingNode> sinks = new HashSet<InterestingNode>();
+    private static final Set<InterestingNode> sinks = new HashSet<>();
 
-    private static final Map<String, Integer> activity2Layout = new HashMap<String, Integer>();
+    private static final Map<String, Integer> activity2Layout = new HashMap<>();
 
     private static InterestingNode latestInterestingNode = null;
 
@@ -47,8 +46,7 @@ public class AnalysisUtil {
 
     // 0 - nothing; 2 - sink
     public static int tryRecordInterestingNode(
-            SSAAbstractInvokeInstruction instr, TypingSubGraph sg,
-            ClassHierarchy cha) {
+            SSAAbstractInvokeInstruction instr, TypingSubGraph sg) {
         String sig = WalaUtil.getSignature(instr);
         String intestringIndices = AnalysisConfig.getPotentialSink(sig);
         latestInterestingNode = null;
@@ -137,21 +135,21 @@ public class AnalysisUtil {
             }
             TypingSubGraph sg = sink.enclosingTypingSubGraph();
             TypingGraph graph = sink.enclosingTypingGraph();
-            dumpTextForNode(gNode, sg, graph, codeTexts, constants);
-            dumpTextForFields(gNode, sg, graph, codeTexts, constants);
+            dumpTextForNode(gNode, graph, codeTexts, constants);
+            dumpTextForFields(gNode, graph, codeTexts, constants);
         }
 
         TextAnalysis textAnalysis = new TextAnalysis();
         String sensitiveTag = textAnalysis.analyze(codeTexts, false);
 
         Map<String, List<Statement>> guiTexts = new HashMap<>();
-        dumpTextForPossibleGUI(sink, writer, guiTexts);
+        dumpTextForPossibleGUI(sink, guiTexts);
 
         // for each widget we collected, if anyone exists in multiple layouts,
         // all those layouts are recorded. but if we can find more than one
         // widget, we may find out the correct layout.
-        Map<Integer, IdCountPair> rankedLayout = new HashMap<Integer, IdCountPair>();
-        Set<Integer> toRemove = new HashSet<Integer>();
+        Map<Integer, IdCountPair> rankedLayout = new HashMap<>();
+        Set<Integer> toRemove = new HashSet<>();
         for (Integer iObj : constants) {
             String guiText = ResourceUtil.getLayoutText(iObj);
             if (guiText != null) {
@@ -159,7 +157,7 @@ public class AnalysisUtil {
                     try {
                         BufferedReader reader = new BufferedReader(
                                 new StringReader(guiText));
-                        String line = null;
+                        String line;
                         while ((line = reader.readLine()) != null) {
                             line = line.trim();
                             if (!line.isEmpty()) {
@@ -187,7 +185,7 @@ public class AnalysisUtil {
             }
         }
 
-        Set<Integer> interestingLayouts = new HashSet<Integer>();
+        Set<Integer> interestingLayouts = new HashSet<>();
         int nRankedLayouts = rankedLayout.size();
         if (nRankedLayouts == 1) {
             IdCountPair p = rankedLayout.values().iterator().next();
@@ -214,7 +212,7 @@ public class AnalysisUtil {
                 try {
                     BufferedReader reader = new BufferedReader(
                             new StringReader(guiText));
-                    String line = null;
+                    String line;
                     while ((line = reader.readLine()) != null) {
                         line = line.trim();
                         if (!line.isEmpty()) {
@@ -336,7 +334,7 @@ public class AnalysisUtil {
         }
     }
 
-    public static void dumpTextForNode(TypingNode n, TypingSubGraph sg,
+    public static void dumpTextForNode(TypingNode n,
                                        TypingGraph graph, Map<String, List<Statement>> texts,
                                        Set<Integer> constants) {
         TypingRecord record = graph.getTypingRecord(n.getGraphNodeId());
@@ -352,7 +350,7 @@ public class AnalysisUtil {
     }
 
     // Fields that across entrypoints
-    private static void dumpTextForFields(TypingNode n, TypingSubGraph sg,
+    private static void dumpTextForFields(TypingNode n,
                                           TypingGraph graph, Map<String, List<Statement>> texts,
                                           Set<Integer> constants) {
         TypingRecord record = graph.getTypingRecord(n.getGraphNodeId());
@@ -570,7 +568,7 @@ public class AnalysisUtil {
 
     // currently only for the GUI that triggers the sink operation
     private static void dumpTextForPossibleGUI(InterestingNode sink,
-                                               BufferedWriter writer, Map<String, List<Statement>> texts) {
+                                               Map<String, List<Statement>> texts) {
         String epClass = sink.enclosingTypingGraph().entry.getMethod()
                 .getDeclaringClass()
                 .getName()
@@ -582,7 +580,7 @@ public class AnalysisUtil {
                 try {
                     BufferedReader reader = new BufferedReader(
                             new StringReader(text));
-                    String line = null;
+                    String line;
                     while ((line = reader.readLine()) != null) {
                         // writer.write(" + ");
                         // writer.write(line);

@@ -134,7 +134,7 @@ public class Main {
             // }
 
             logger.info(" * Build TypingGraph");
-            TypingGraphUtil.buildTypingGraph(entrypoint, cg, g, cha);
+            TypingGraphUtil.buildTypingGraph(entrypoint, cg, g);
 
             epList.clear();
             if (System.currentTimeMillis() - start >= 60 * 60 * 1000) { // 1
@@ -165,19 +165,19 @@ public class Main {
 
     private void dumpCG(CallGraph cg) {
         for (CGNode n : cg) {
-			if (n.getMethod()
-					.getDeclaringClass()
-					.getClassLoader()
-					.getReference()
-					.equals(ClassLoaderReference.Primordial)
-					&& !n.getMethod().isSynthetic()) {
-				// continue;
-				logger.debug("Primor: {} - {}", n.getMethod().getSignature(),
-						cg.getSuccNodeCount(n));
-			} else {
-				logger.debug("CGNode: {} - {}", n.getMethod().getSignature(),
-						cg.getSuccNodeCount(n));
-			}
+            if (n.getMethod()
+                    .getDeclaringClass()
+                    .getClassLoader()
+                    .getReference()
+                    .equals(ClassLoaderReference.Primordial)
+                    && !n.getMethod().isSynthetic()) {
+                // continue;
+                logger.debug("Primor: {} - {}", n.getMethod().getSignature(),
+                        cg.getSuccNodeCount(n));
+            } else {
+                logger.debug("CGNode: {} - {}", n.getMethod().getSignature(),
+                        cg.getSuccNodeCount(n));
+            }
             if (n.getMethod()
                     .getDeclaringClass()
                     .getName()

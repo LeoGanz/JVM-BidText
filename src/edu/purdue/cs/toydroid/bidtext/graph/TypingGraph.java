@@ -22,7 +22,7 @@ public class TypingGraph {
     // outgoing
     // fields
     private final DelegatingNumberedNodeManager<TypingNode> nodeManager;
-    private Map<SimpleGraphNode, TypingRecord> node2Typing;
+    private final Map<SimpleGraphNode, TypingRecord> node2Typing;
 
     public TypingGraph(Entrypoint e) {
         entry = e;
@@ -188,9 +188,9 @@ public class TypingGraph {
     }
 
     public boolean possibleExternalInput(TypingNode node) {
-		if (!node.isField()) {
-			return false;
-		}
+        if (!node.isField()) {
+            return false;
+        }
         return possibleExternalInput(node.getGraphNodeId());
     }
 
