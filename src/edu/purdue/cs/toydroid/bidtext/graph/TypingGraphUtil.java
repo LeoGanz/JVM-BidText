@@ -71,7 +71,6 @@ public class TypingGraphUtil {
             // DotUtil.dotify(g, WalaUtil.makeNodeDecorator(), "5004.dot",
             // null, null);
             // } catch (WalaException e) {
-            // // TODO Auto-generated catch block
             // e.printStackTrace();
             // }
             // }
@@ -143,13 +142,10 @@ public class TypingGraphUtil {
 
         Optional<TypingNode> newCachedNode = handleStatement(cg, sdg, stmt, cachedNode);
         if (!statementVisited(sdg, stmt, visitedStatementCount)) {
-            Iterator<Statement> iter = sdg.getSuccNodes(stmt);
-            while (iter.hasNext()) {
-                stmt = iter.next();
-                if (newCachedNode.isPresent()) {
-                    worklist.add(newCachedNode);
-                }
-                worklist.add(stmt);
+            Iterator<Statement> succNodes = sdg.getSuccNodes(stmt);
+            while (succNodes.hasNext()) {
+                newCachedNode.ifPresent(worklist::add);
+                worklist.add(succNodes.next());
             }
         }
     }
@@ -213,13 +209,13 @@ public class TypingGraphUtil {
 
     private static Optional<TypingNode> handleNormal(NormalStatement nstmt, TypingNode cachedNode) {
         CGNode cgNode = nstmt.getNode();
-        TypingNode newCachedNode = null;
         if (cgNode.getMethod().isSynthetic()) {
             return Optional.empty();
         }
         TypingSubGraph sg = currentTypingGraph.findOrCreateSubGraph(cgNode);
         SSAInstruction inst = nstmt.getInstruction();
 
+        TypingNode newCachedNode = null;
         if (inst instanceof SSAPutInstruction) {
             newCachedNode = handleSSAPut(nstmt, (SSAPutInstruction) inst, sg);
             // System.err.println("SSAPut: " + inst + " \n\t [" + newCachedNode
@@ -250,7 +246,6 @@ public class TypingGraphUtil {
 
     private static Optional<TypingNode> handleParamCaller(Graph<Statement> sdg, ParamCaller pcstmt) {
         CGNode cgNode = pcstmt.getNode();
-        TypingNode newCachedNode = null;
         if (cgNode.getMethod().isSynthetic()) {
             return Optional.empty();
         }
@@ -263,13 +258,13 @@ public class TypingGraphUtil {
                 handleSSAInvokeAPI(cgNode, pcstmt, inst, sg);
             }
             // hasDef(): left to be processed in NormalRetCaller?
+            return Optional.empty();
         } else { // local call
-            int pv = pcstmt.getValueNumber();// recorded for later use in param
-            // callee
-            newCachedNode = sg.findOrCreate(pv);
+            int pv = pcstmt.getValueNumber();// recorded for later use in param callee
             cachedStmt = pcstmt;
+            TypingNode newCachedNode = sg.findOrCreate(pv);
+            return Optional.of(newCachedNode);
         }
-        return newCachedNode == null ? Optional.empty() : Optional.of(newCachedNode);
     }
 
     private static Optional<TypingNode> handleParamCallee(ParamCallee pcstmt, TypingNode cachedNode) {
@@ -494,13 +489,12 @@ public class TypingGraphUtil {
     }
 
     private static TypingNode handleSSAReturn(NormalStatement stmt, SSAReturnInstruction inst, TypingSubGraph sg) {
-        TypingNode retNode = null;
         if (!inst.returnsVoid()) {
             int ret = inst.getResult();
-            retNode = sg.findOrCreate(ret);
             cachedStmt = stmt;
+            return sg.findOrCreate(ret);
         }
-        return retNode;
+        return null;
     }
 
     private static void handleSSAInstanceof(SSAInstanceofInstruction inst, TypingSubGraph sg) {
@@ -829,7 +823,6 @@ public class TypingGraphUtil {
             c.addPath(stmt);
             // currentTypingGraph.mergeClass(useNode, defNode);
         }
-        dupSet = null;
     }
 
     /************************************************************/
@@ -885,9 +878,9 @@ public class TypingGraphUtil {
         storedBBs.add(bb);
         SSAInstruction lastInst = bb.getLastInstruction();
         if (!(lastInst instanceof SSAConditionalBranchInstruction) && !(lastInst instanceof SSASwitchInstruction)) {
-            Iterator<ISSABasicBlock> iter = cfg.getSuccNodes(bb);
-            while (iter.hasNext()) {
-                ISSABasicBlock succ = iter.next();
+            Iterator<ISSABasicBlock> succNodes = cfg.getSuccNodes(bb);
+            while (succNodes.hasNext()) {
+                ISSABasicBlock succ = succNodes.next();
                 if (succ.isCatchBlock() || succ.isExitBlock()) {
                     continue;
                 }
@@ -909,9 +902,9 @@ public class TypingGraphUtil {
             return;
         }
         storedBBs.add(bb);
-        Iterator<ISSABasicBlock> iter = cfg.getPredNodes(bb);
-        while (iter.hasNext()) {
-            ISSABasicBlock pred = iter.next();
+        Iterator<ISSABasicBlock> predNodes = cfg.getPredNodes(bb);
+        while (predNodes.hasNext()) {
+            ISSABasicBlock pred = predNodes.next();
             if (pred.isEntryBlock()) {
                 continue;
             }
