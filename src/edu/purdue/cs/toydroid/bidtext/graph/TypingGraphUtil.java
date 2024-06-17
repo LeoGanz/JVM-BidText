@@ -58,7 +58,7 @@ public class TypingGraphUtil {
         entry2Graph.put(ep, graph);
         currentTypingGraph = graph;
         logger.info("   - Visit SDG ");
-        Map<Statement, SimpleCounter> visited = new HashMap<>();
+        Map<Statement, SimpleCounter> visitedStatementCount = new HashMap<>();
         int idx = 0;
         for (Statement stmt : sdg) {
             // logger.info("    + SDG stmt: {} ## {}", idx, stmt.toString());
@@ -76,13 +76,13 @@ public class TypingGraphUtil {
             // }
             // }
             idx++;
-            buildTypingGraphForStmt(cg, sdg, stmt, visited);
+            buildTypingGraphForStmt(cg, sdg, stmt, visitedStatementCount);
             if (TextLeak.taskTimeout) {
                 break;
             }
         }
 
-        visited.clear();
+        visitedStatementCount.clear();
         ssaGet2Nodes.clear();
         sFieldHeaps.clear();
         logger.info("   - Process possible incoming fields");
@@ -111,7 +111,7 @@ public class TypingGraphUtil {
     }
 
     private static void buildTypingGraphForStmt(CallGraph cg, Graph<Statement> sdg, Statement stmt,
-                                                Map<Statement, SimpleCounter> visited) {
+                                                Map<Statement, SimpleCounter> visitedStatementCount) {
         // only scan top level stmt
         if (0 == sdg.getPredNodeCount(stmt)
             /*
@@ -131,22 +131,22 @@ public class TypingGraphUtil {
                     nextStmt = (Statement) obj;
                 }
                 // logger.debug("      * {}", nextStmt.toString());
-                buildTypingGraphForStmtBFS(cg, sdg, nextStmt, visited, cachedNode, worklist);
+                buildTypingGraphForStmtBFS(cg, sdg, nextStmt, visitedStatementCount, cachedNode, worklist);
             }
-            // buildTypingGraphForStmtDFS(cg, sdg, stmt, visited, null);
         }
     }
 
     private static void buildTypingGraphForStmtBFS(CallGraph cg, Graph<Statement> sdg, Statement stmt,
-                                                   Map<Statement, SimpleCounter> visited, TypingNode cachedNode,
+                                                   Map<Statement, SimpleCounter> visitedStatementCount,
+                                                   TypingNode cachedNode,
                                                    List<Object> worklist) {
 
-        TypingNode newCachedNode = handleStatement(cg, sdg, stmt, cachedNode);
-        if (!statementVisited(sdg, stmt, visited)) {
+        Optional<TypingNode> newCachedNode = handleStatement(cg, sdg, stmt, cachedNode);
+        if (!statementVisited(sdg, stmt, visitedStatementCount)) {
             Iterator<Statement> iter = sdg.getSuccNodes(stmt);
             while (iter.hasNext()) {
                 stmt = iter.next();
-                if (newCachedNode != null) {
+                if (newCachedNode.isPresent()) {
                     worklist.add(newCachedNode);
                 }
                 worklist.add(stmt);
@@ -154,60 +154,23 @@ public class TypingGraphUtil {
         }
     }
 
-    private static TypingNode handleStatement(CallGraph cg, Graph<Statement> sdg, Statement stmt,
-                                              TypingNode cachedNode) {
+    private static Optional<TypingNode> handleStatement(CallGraph cg, Graph<Statement> sdg, Statement stmt,
+                                                        TypingNode cachedNode) {
         Kind kind = stmt.getKind();
         return switch (kind) {
-            case PHI -> {
-                handlePhi(stmt);
-                yield null;
-            }
-            case NORMAL -> handleNormal(stmt, cachedNode);
-            case PARAM_CALLER -> handleParamCaller(sdg, stmt);
-            case PARAM_CALLEE -> {
-                handleParamCallee(stmt, cachedNode);
-                yield null;
-            }
-            case NORMAL_RET_CALLER -> {
-                handleNormalRetCaller(sdg, stmt, cachedNode);
-                yield null;
-            }
-            case NORMAL_RET_CALLEE -> cachedNode;
-            // System.err.println("NRCallee: " + cachedNode);
-            case HEAP_RET_CALLEE -> {
-                handleHeapRetCallee(cg, stmt, cachedNode);
-                yield null;
-            }
-            case HEAP_RET_CALLER -> handleHeapRetCaller(cg, stmt);
-            case HEAP_PARAM_CALLEE -> handleHeapParamCallee(cg, stmt);
-            default -> null;
+            case PHI -> handlePhi((PhiStatement) stmt);
+            case NORMAL -> handleNormal((NormalStatement) stmt, cachedNode);
+            case PARAM_CALLER -> handleParamCaller(sdg, (ParamCaller) stmt);
+            case PARAM_CALLEE -> handleParamCallee((ParamCallee) stmt, cachedNode);
+            case NORMAL_RET_CALLER -> handleNormalRetCaller(sdg, (NormalReturnCaller) stmt, cachedNode);
+            case NORMAL_RET_CALLEE -> Optional.of(cachedNode);
+            case HEAP_RET_CALLEE -> handleHeapRetCallee(cg, (HeapReturnCallee) stmt, cachedNode);
+            case HEAP_RET_CALLER -> handleHeapRetCaller(cg, (HeapReturnCaller) stmt);
+            case HEAP_PARAM_CALLEE -> handleHeapParamCallee(cg, (HeapParamCallee) stmt);
+            default -> Optional.empty();
         };
     }
 
-    @Deprecated
-    private static void buildTypingGraphForStmtDFS(CallGraph cg, Graph<Statement> sdg, Statement stmt,
-                                                   Map<Statement, SimpleCounter> visited, TypingNode cachedNode) {
-        TypingNode newCachedNode = handleStatement(cg, sdg, stmt, cachedNode);
-        // if (!visited.contains(stmt)) {
-        if (!statementVisited(sdg, stmt, visited)) {
-            // visited.add(stmt);
-            if (stmt.getKind() == Statement.Kind.NORMAL) {
-                NormalStatement ns = (NormalStatement) stmt;
-                if ("arraystore 47[51] = 49".equals(ns.getInstruction().toString())) {
-                    logger.debug("     arraystore 47[51] = 49 ::: {}", sdg.getPredNodeCount(stmt));
-                    Iterator<Statement> i = sdg.getPredNodes(stmt);
-                    while (i.hasNext()) {
-                        logger.debug("   {}", i.next().toString());
-                    }
-                }
-            }
-            Iterator<Statement> iter = sdg.getSuccNodes(stmt);
-            while (iter.hasNext()) {
-                stmt = iter.next();
-                buildTypingGraphForStmtDFS(cg, sdg, stmt, visited, newCachedNode);
-            }
-        }
-    }
 
     /************************************************************/
     /************** Handle Specific WALA Statement **************/
@@ -217,45 +180,44 @@ public class TypingGraphUtil {
      * have been traversed.
      */
     private static boolean statementVisited(Graph<Statement> sdg, Statement stmt,
-                                            Map<Statement, SimpleCounter> visited) {
-        boolean v = false;
+                                            Map<Statement, SimpleCounter> visitedStatementsCount) {
+        boolean visited = false;
         int predNCount = sdg.getPredNodeCount(stmt);
         if (predNCount > 1) {
-            SimpleCounter counter = visited.get(stmt);
+            SimpleCounter counter = visitedStatementsCount.get(stmt);
             SimpleCounter newCounter = SimpleCounter.increment(counter);
             if (counter == null) {
-                visited.put(stmt, newCounter);
+                visitedStatementsCount.put(stmt, newCounter);
             }
             if (newCounter.count > 1) {
-                v = true;
+                visited = true;
             }
             if (newCounter.count >= predNCount) {
-                // v = true;
-                visited.remove(stmt);
+                // visited = true;
+                visitedStatementsCount.remove(stmt);
             }
         }
 
-        return v;
+        return visited;
     }
 
-    private static void handlePhi(Statement stmt) {
-        CGNode cgNode = stmt.getNode();
+    private static Optional<TypingNode> handlePhi(PhiStatement phiStmt) {
+        CGNode cgNode = phiStmt.getNode();
         if (cgNode.getMethod().isSynthetic()) {
-            return;
+            return Optional.empty();
         }
         TypingSubGraph sg = currentTypingGraph.findOrCreateSubGraph(cgNode);
-        PhiStatement phiStmt = (PhiStatement) stmt;
         handleSSAPhi(phiStmt, phiStmt.getPhi(), sg);
+        return Optional.empty();
     }
 
-    private static TypingNode handleNormal(Statement stmt, TypingNode cachedNode) {
-        CGNode cgNode = stmt.getNode();
+    private static Optional<TypingNode> handleNormal(NormalStatement nstmt, TypingNode cachedNode) {
+        CGNode cgNode = nstmt.getNode();
         TypingNode newCachedNode = null;
         if (cgNode.getMethod().isSynthetic()) {
-            return newCachedNode;
+            return Optional.empty();
         }
         TypingSubGraph sg = currentTypingGraph.findOrCreateSubGraph(cgNode);
-        NormalStatement nstmt = (NormalStatement) stmt;
         SSAInstruction inst = nstmt.getInstruction();
 
         if (inst instanceof SSAPutInstruction) {
@@ -283,40 +245,38 @@ public class TypingGraphUtil {
         } else if (!(inst instanceof SSAAbstractInvokeInstruction)) {
             // System.err.println("Unrecognized Normal Stmt: " + stmt);
         } // invoke is ignored.
-        return newCachedNode;
+        return newCachedNode == null ? Optional.empty() : Optional.of(newCachedNode);
     }
 
-    private static TypingNode handleParamCaller(Graph<Statement> sdg, Statement stmt) {
-        CGNode cgNode = stmt.getNode();
+    private static Optional<TypingNode> handleParamCaller(Graph<Statement> sdg, ParamCaller pcstmt) {
+        CGNode cgNode = pcstmt.getNode();
         TypingNode newCachedNode = null;
         if (cgNode.getMethod().isSynthetic()) {
-            return newCachedNode;
+            return Optional.empty();
         }
         TypingSubGraph sg = currentTypingGraph.findOrCreateSubGraph(cgNode);
-        ParamCaller pcstmt = (ParamCaller) stmt;
         int nSucc = sdg.getSuccNodeCount(pcstmt);
         if (nSucc == 0) { // API call?
             SSAAbstractInvokeInstruction inst = pcstmt.getInstruction();
             if (!inst.hasDef()) {
                 // AnalysisUtil.associateLayout2Activity(inst, cgNode);
-                handleSSAInvokeAPI(cgNode, stmt, inst, sg);
+                handleSSAInvokeAPI(cgNode, pcstmt, inst, sg);
             }
             // hasDef(): left to be processed in NormalRetCaller?
         } else { // local call
             int pv = pcstmt.getValueNumber();// recorded for later use in param
             // callee
             newCachedNode = sg.findOrCreate(pv);
-            cachedStmt = stmt;
+            cachedStmt = pcstmt;
         }
-        return newCachedNode;
+        return newCachedNode == null ? Optional.empty() : Optional.of(newCachedNode);
     }
 
-    private static void handleParamCallee(Statement stmt, TypingNode cachedNode) {
-        CGNode cgNode = stmt.getNode();
+    private static Optional<TypingNode> handleParamCallee(ParamCallee pcstmt, TypingNode cachedNode) {
+        CGNode cgNode = pcstmt.getNode();
         if (cgNode.getMethod().isSynthetic()) {
-            return;
+            return Optional.empty();
         }
-        ParamCallee pcstmt = (ParamCallee) stmt;
         if (cachedNode == null) {
             // System.err.println("Unrecognized ParamCallee <No Cached Node Found>: "
             // + stmt);
@@ -334,22 +294,23 @@ public class TypingGraphUtil {
                 c.addPath(cachedStmt);
                 bc = new TypingConstraint(paramNode.getGraphNodeId(), TypingConstraint.EQ, cachedNode.getGraphNodeId());
                 // reverse the path for backward propagation
-                bc.addPath(stmt);
+                bc.addPath(pcstmt);
                 bc.addPath(cachedStmt);
             }
-            c.addPath(stmt);
+            c.addPath(pcstmt);
             orec.addForwardTypingConstraint(c);
             nrec.addBackwardTypingConstraint(bc);
             cachedStmt = null;
         }
+        return Optional.empty();
     }
 
-    private static void handleNormalRetCaller(Graph<Statement> sdg, Statement stmt, TypingNode cachedNode) {
-        NormalReturnCaller nrc = (NormalReturnCaller) stmt;
+    private static Optional<TypingNode> handleNormalRetCaller(Graph<Statement> sdg, NormalReturnCaller nrc,
+                                                              TypingNode cachedNode) {
         CGNode cgNode = nrc.getNode();
         TypingSubGraph sg = currentTypingGraph.findOrCreateSubGraph(cgNode);
-        if (sdg.getPredNodeCount(stmt) == 0) {// API call?
-            handleSSAInvokeAPI(cgNode, stmt, nrc.getInstruction(), sg);
+        if (sdg.getPredNodeCount(nrc) == 0) {// API call?
+            handleSSAInvokeAPI(cgNode, nrc, nrc.getInstruction(), sg);
         } else if (nrc.getInstruction().hasDef()) {
             if (cachedNode == null) {
                 System.err.println("No Return Object is found for NormalRetCaller: " + nrc);
@@ -366,23 +327,23 @@ public class TypingGraphUtil {
                     c.addPath(cachedStmt);
                     bc = new TypingConstraint(retNode.getGraphNodeId(), TypingConstraint.EQ,
                             cachedNode.getGraphNodeId());
-                    bc.addPath(stmt);
+                    bc.addPath(nrc);
                     bc.addPath(cachedStmt);
                 }
-                c.addPath(stmt);
+                c.addPath(nrc);
                 orec.addForwardTypingConstraint(c);
                 nrec.addBackwardTypingConstraint(bc);
                 // cachedStmt = null;
             }
         }
+        return Optional.empty();
     }
 
-    private static void handleHeapRetCallee(CallGraph cg, Statement stmt, TypingNode cachedNode) {
-        if (cachedNode == null || !cachedNode.isStaticField() || stmt.getNode().equals(cg.getFakeRootNode())) {
+    private static Optional<TypingNode> handleHeapRetCallee(CallGraph cg, HeapReturnCallee hrc, TypingNode cachedNode) {
+        if (cachedNode == null || !cachedNode.isStaticField() || hrc.getNode().equals(cg.getFakeRootNode())) {
             // instance field is immediately used
-            return;
+            return Optional.empty();
         }
-        HeapReturnCallee hrc = (HeapReturnCallee) stmt;
         PointerKey location = hrc.getLocation();
         if (location instanceof StaticFieldKey) {
             TypingNode existing = sFieldHeaps.get(location);
@@ -390,32 +351,31 @@ public class TypingGraphUtil {
                 sFieldHeaps.put(location, cachedNode);
             }
         }
+        return Optional.empty();
     }
 
-    private static TypingNode handleHeapRetCaller(CallGraph cg, Statement stmt) {
-        if (stmt.getNode().equals(cg.getFakeRootNode())) {
-            return null;
+    private static Optional<TypingNode> handleHeapRetCaller(CallGraph cg, HeapReturnCaller hrc) {
+        if (hrc.getNode().equals(cg.getFakeRootNode())) {
+            return Optional.empty();
         }
-        TypingNode newCacheNode = null;
-        HeapReturnCaller hrc = (HeapReturnCaller) stmt;
+        TypingNode newCachedNode = null;
         PointerKey location = hrc.getLocation();
         if (location instanceof StaticFieldKey) {
-            newCacheNode = sFieldHeaps.get(location);
+            newCachedNode = sFieldHeaps.get(location);
         }
-        return newCacheNode;
+        return newCachedNode == null ? Optional.empty() : Optional.of(newCachedNode);
     }
 
-    private static TypingNode handleHeapParamCallee(CallGraph cg, Statement stmt) {
-        if (stmt.getNode().equals(cg.getFakeRootNode())) {
-            return null;
+    private static Optional<TypingNode> handleHeapParamCallee(CallGraph cg, HeapParamCallee hrc) {
+        if (hrc.getNode().equals(cg.getFakeRootNode())) {
+            return Optional.empty();
         }
-        TypingNode newCacheNode = null;
-        HeapParamCallee hrc = (HeapParamCallee) stmt;
+        TypingNode newCachedNode = null;
         PointerKey location = hrc.getLocation();
         if (location instanceof StaticFieldKey) {
-            newCacheNode = sFieldHeaps.get(location);
+            newCachedNode = sFieldHeaps.get(location);
         }
-        return newCacheNode;
+        return newCachedNode == null ? Optional.empty() : Optional.of(newCachedNode);
     }
 
     /************************************************************/
