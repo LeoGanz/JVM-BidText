@@ -24,7 +24,7 @@ import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphSlicer;
 import edu.purdue.cs.toydroid.bidtext.analysis.AnalysisUtil;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
-import edu.purdue.cs.toydroid.bidtext.graph.TypingGraphUtil;
+import edu.purdue.cs.toydroid.bidtext.graph.construction.TypingGraphUtil;
 import edu.purdue.cs.toydroid.utils.AnalysisScopeUtil;
 import edu.purdue.cs.toydroid.utils.EntrypointUtil;
 import edu.purdue.cs.toydroid.utils.ResourceUtil;

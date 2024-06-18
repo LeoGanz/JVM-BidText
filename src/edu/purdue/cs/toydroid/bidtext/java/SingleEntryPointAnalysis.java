@@ -15,7 +15,7 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphSlicer;
-import edu.purdue.cs.toydroid.bidtext.graph.TypingGraphUtil;
+import edu.purdue.cs.toydroid.bidtext.graph.construction.TypingGraphUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

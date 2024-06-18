@@ -1,4 +1,4 @@
-package edu.purdue.cs.toydroid.bidtext.graph;
+package edu.purdue.cs.toydroid.bidtext.graph.construction;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.slicer.NormalReturnCaller;
@@ -6,6 +6,7 @@ import com.ibm.wala.ipa.slicer.ParamCaller;
 import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ssa.*;
 import com.ibm.wala.types.TypeReference;
+import edu.purdue.cs.toydroid.bidtext.graph.*;
 import edu.purdue.cs.toydroid.utils.WalaUtil;
 
 import java.util.*;

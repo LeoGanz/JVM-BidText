@@ -22,7 +22,7 @@ import com.ibm.wala.util.graph.GraphSlicer;
 import com.ibm.wala.util.viz.DotUtil;
 import edu.purdue.cs.toydroid.bidtext.analysis.AnalysisUtil;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
-import edu.purdue.cs.toydroid.bidtext.graph.TypingGraphUtil;
+import edu.purdue.cs.toydroid.bidtext.graph.construction.TypingGraphUtil;
 import edu.purdue.cs.toydroid.utils.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

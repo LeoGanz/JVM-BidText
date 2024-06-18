@@ -6,6 +6,7 @@ import com.ibm.wala.ipa.slicer.NormalStatement;
 import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ssa.*;
 import edu.purdue.cs.toydroid.bidtext.graph.*;
+import edu.purdue.cs.toydroid.bidtext.graph.construction.TypingGraphUtil;
 import edu.purdue.cs.toydroid.utils.AnalysisConfig;
 import edu.purdue.cs.toydroid.utils.ResourceUtil;
 import edu.purdue.cs.toydroid.utils.WalaUtil;
