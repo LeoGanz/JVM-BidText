@@ -58,7 +58,7 @@ public class TypingGraphUtil {
         currentTypingGraph = graph;
         logger.info("   - Visit SDG ");
         Map<Statement, SimpleCounter> visitedStatementCount = new HashMap<>();
-        int idx = 0;
+        // int idx = 0;
         for (Statement stmt : sdg) {
             // logger.info("    + SDG stmt: {} ## {}", idx, stmt.toString());
             // if (idx == 5004) {
@@ -73,7 +73,7 @@ public class TypingGraphUtil {
             // e.printStackTrace();
             // }
             // }
-            idx++;
+            // idx++;
             buildTypingGraphForStmt(cg, sdg, stmt, visitedStatementCount);
             if (TextLeak.taskTimeout) {
                 break;
@@ -93,8 +93,7 @@ public class TypingGraphUtil {
         graph.updateFieldTypingRecords();
         logger.info("   - Propagate Typing");
         new Propagator(graph).propagate();
-        // clear typing graph at the end - remove usused data for memory
-        // efficiency
+        // clear typing graph at the end - remove usused data for memory efficiency
         graph.clearAtEnd();
     }
 
