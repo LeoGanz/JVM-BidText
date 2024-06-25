@@ -1,6 +1,7 @@
 package edu.purdue.cs.toydroid.bidtext.graph.construction;
 
 import com.ibm.wala.ipa.slicer.*;
+import com.ibm.wala.types.MethodReference;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
 
 import java.util.*;
@@ -8,11 +9,12 @@ import java.util.*;
 public class Worklist implements Iterable<Worklist.Item> {
 
     private final List<Item> delegate;
-    private Optional<ParamCaller> latestParamCaller;
+    private final Map<MethodReference, ParamCaller> targetMethodsOfCallers;
     private Optional<NormalStatement> latestNormalStatement;
 
     public Worklist() {
         delegate = new LinkedList<>();
+        targetMethodsOfCallers = new HashMap<>();
     }
 
     public boolean isEmpty() {
@@ -32,8 +34,10 @@ public class Worklist implements Iterable<Worklist.Item> {
         return delegate.iterator();
     }
 
-    public void cacheLatestParamCaller(ParamCaller pcStmt) {
-        latestParamCaller = pcStmt == null ? Optional.empty() : Optional.of(pcStmt);
+    public void cacheParamCaller(ParamCaller pcStmt) {
+        if (pcStmt != null) {
+            targetMethodsOfCallers.put(pcStmt.getInstruction().getCallSite().getDeclaredTarget(), pcStmt);
+        }
     }
 
     public void cacheLatestNormalStatement(NormalStatement normalStatement) {
@@ -46,11 +50,10 @@ public class Worklist implements Iterable<Worklist.Item> {
 
     //TODO combine wiht add method
     public Item item(Statement statement, Optional<TypingNode> cachedNode) {
+        //TODO is cachedNode always statement.getNode()?
         if (statement instanceof ParamCallee paramCallee) {
-//            System.out.println("binding param caller (1) to callee (2)");
-//            System.out.println("(1): " + latestParamCaller.get());
-//            System.out.println("(2): " + paramCallee);
-            return new Item(statement, cachedNode, latestParamCaller, Optional.empty());
+            ParamCaller paramCaller = targetMethodsOfCallers.remove(paramCallee.getNode().getMethod().getReference());
+            return new Item(statement, cachedNode, Optional.ofNullable(paramCaller), Optional.empty());
         } else if (statement instanceof NormalReturnCaller) {
             return new Item(statement, cachedNode, Optional.empty(), latestNormalStatement);
         } else {
