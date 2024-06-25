@@ -9,12 +9,16 @@ import java.util.*;
 public class Worklist implements Iterable<Worklist.Item> {
 
     private final List<Item> delegate;
-    private final Map<MethodReference, ParamCaller> targetMethodsOfCallers;
-    private Optional<NormalStatement> latestNormalStatement;
+
+    // caches of statements to link the caller and callee both for method invocations and returns
+    // callee (method reference) always means 'child method'
+    private final Map<MethodReference, ParamCaller> calleesOfMethodInvocations;
+    private final Map<MethodReference, NormalStatement> calleesOfReturns;
 
     public Worklist() {
         delegate = new LinkedList<>();
-        targetMethodsOfCallers = new HashMap<>();
+        calleesOfMethodInvocations = new HashMap<>();
+        calleesOfReturns = new HashMap<>();
     }
 
     public boolean isEmpty() {
@@ -36,12 +40,14 @@ public class Worklist implements Iterable<Worklist.Item> {
 
     public void cacheParamCaller(ParamCaller pcStmt) {
         if (pcStmt != null) {
-            targetMethodsOfCallers.put(pcStmt.getInstruction().getCallSite().getDeclaredTarget(), pcStmt);
+            calleesOfMethodInvocations.put(pcStmt.getInstruction().getCallSite().getDeclaredTarget(), pcStmt);
         }
     }
 
     public void cacheLatestNormalStatement(NormalStatement normalStatement) {
-        latestNormalStatement = normalStatement == null ? Optional.empty() : Optional.of(normalStatement);
+        if (normalStatement != null) {
+            calleesOfReturns.put(normalStatement.getNode().getMethod().getReference(), normalStatement);
+        }
     }
 
     public Item item(Statement stmt) {
@@ -52,10 +58,15 @@ public class Worklist implements Iterable<Worklist.Item> {
     public Item item(Statement statement, Optional<TypingNode> cachedNode) {
         //TODO is cachedNode always statement.getNode()?
         if (statement instanceof ParamCallee paramCallee) {
-            ParamCaller paramCaller = targetMethodsOfCallers.remove(paramCallee.getNode().getMethod().getReference());
+            // the side that executes the call to a child method
+            ParamCaller paramCaller =
+                    calleesOfMethodInvocations.remove(paramCallee.getNode().getMethod().getReference());
             return new Item(statement, cachedNode, Optional.ofNullable(paramCaller), Optional.empty());
-        } else if (statement instanceof NormalReturnCaller) {
-            return new Item(statement, cachedNode, Optional.empty(), latestNormalStatement);
+        } else if (statement instanceof NormalReturnCaller normalReturnCaller) {
+            // the side that executes 'return x;'
+            NormalStatement callee =
+                    calleesOfReturns.remove(normalReturnCaller.getInstruction().getCallSite().getDeclaredTarget());
+            return new Item(statement, cachedNode, Optional.empty(), Optional.ofNullable(callee));
         } else {
             return new Item(statement, cachedNode, Optional.empty(), Optional.empty());
         }

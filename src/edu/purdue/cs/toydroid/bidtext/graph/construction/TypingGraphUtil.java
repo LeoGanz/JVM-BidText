@@ -301,7 +301,6 @@ public class TypingGraphUtil {
                         cachedNode.getGraphNodeId());
                 TypingConstraint bc = c;
                 if (cachedStmt.isPresent()) {
-//                    System.out.println("NormalRetCaller use cachedStmt: " + cachedStmt);
                     c.addPath(cachedStmt.get());
                     bc = new TypingConstraint(retNode.getGraphNodeId(), TypingConstraint.EQ,
                             cachedNode.getGraphNodeId());
@@ -311,8 +310,6 @@ public class TypingGraphUtil {
                 c.addPath(nrc);
                 orec.addForwardTypingConstraint(c);
                 nrec.addBackwardTypingConstraint(bc);
-                // cachedStmt = null;
-//                System.out.println("// NormalRetCaller prev. reset cachedStmt");
             }
         }
         return Optional.empty();
@@ -477,7 +474,6 @@ public class TypingGraphUtil {
         if (!inst.returnsVoid()) {
             int ret = inst.getResult();
             worklist.cacheLatestNormalStatement(stmt);
-//            System.out.println("SSAReturn set cachedStmt: " + stmt);
             return sg.findOrCreate(ret);
         }
         return null;
