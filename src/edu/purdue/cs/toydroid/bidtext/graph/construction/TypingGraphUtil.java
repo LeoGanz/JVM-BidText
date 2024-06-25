@@ -12,6 +12,7 @@ import com.ibm.wala.ipa.slicer.HeapStatement.HeapReturnCaller;
 import com.ibm.wala.ipa.slicer.*;
 import com.ibm.wala.ipa.slicer.Statement.Kind;
 import com.ibm.wala.ssa.*;
+import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.graph.Graph;
 import edu.purdue.cs.toydroid.bidtext.analysis.AnalysisUtil;
 import edu.purdue.cs.toydroid.bidtext.analysis.InterestingNode;
@@ -243,6 +244,7 @@ public class TypingGraphUtil {
         } else { // local call
             int pv = pcstmt.getValueNumber();// recorded for later use in param callee
             worklist.cacheLatestParamCaller(pcstmt);
+            System.out.println("setting stmt: " + pcstmt);
 //            System.out.println("ParamCalleR set cachedStmt: " + pcstmt);
             TypingNode newCachedNode = sg.findOrCreate(pv);
             return Optional.of(newCachedNode);
@@ -270,8 +272,15 @@ public class TypingGraphUtil {
             TypingConstraint bc = c;
             if (cachedStmt.isPresent()) {
                 System.out.println("stmt usage: param caller (1) in callee (2)");
-                System.out.println("(1): " + cachedStmt);
+                System.out.println("(1): " + cachedStmt.get());
                 System.out.println("(2): " + pcstmt);
+
+                MethodReference methodCallerTarget =
+                        cachedStmt.get().getInstruction().getCallSite().getDeclaredTarget();
+                MethodReference methodCallee = pcstmt.getNode().getMethod().getReference();
+                System.out.println("MethodCaller target: " + methodCallerTarget);
+                System.out.println("MethodCallee       : " + methodCallee);
+                System.out.println("Caller target matches callee: " + Objects.equals(methodCallerTarget, methodCallee));
 //                System.out.println("ParamCallee use cachedStmt: " + cachedStmt.get());
                 c.addPath(cachedStmt.get());
                 bc = new TypingConstraint(paramNode.getGraphNodeId(), TypingConstraint.EQ, cachedNode.getGraphNodeId());
