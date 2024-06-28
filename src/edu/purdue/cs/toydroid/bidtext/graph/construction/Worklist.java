@@ -44,7 +44,7 @@ public class Worklist implements Iterable<Worklist.Item> {
         }
     }
 
-    public void cacheLatestNormalStatement(NormalStatement normalStatement) {
+    public void cacheLatestStatement(NormalStatement normalStatement) {
         if (normalStatement != null) {
             calleesOfReturns.put(normalStatement.getNode().getMethod().getReference(), normalStatement);
         }
@@ -59,6 +59,7 @@ public class Worklist implements Iterable<Worklist.Item> {
         //TODO is cachedNode always statement.getNode()?
         if (statement instanceof ParamCallee paramCallee) {
             // the side that executes the call to a child method
+            // Remove from cache as every param callee is preceded by a param caller which overwrites the cache anyway
             ParamCaller paramCaller =
                     calleesOfMethodInvocations.remove(paramCallee.getNode().getMethod().getReference());
             return new Item(statement, cachedNode, Optional.ofNullable(paramCaller), Optional.empty());

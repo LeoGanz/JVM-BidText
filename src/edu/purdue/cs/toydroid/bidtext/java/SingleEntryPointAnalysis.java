@@ -77,7 +77,7 @@ public class SingleEntryPointAnalysis {
 
         pruneSDG();
 
-        dumpSDG();
+//        dumpSDG();
         // if (Main.DEBUG) {
         // DotUtil.dotify(g, WalaUtil.makeNodeDecorator(),
         // entrypoint.getMethod().getName().toString() + ".dot", null,
