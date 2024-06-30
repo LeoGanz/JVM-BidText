@@ -106,7 +106,7 @@ public class TypingGraphUtil {
             return;
         }
         Worklist worklist = new Worklist();
-        worklist.add(worklist.item(stmt));
+        worklist.add(stmt);
         while (!worklist.isEmpty()) {
             Worklist.Item item = worklist.removeFirst();
             buildTypingGraphForStmtBFS(cg, sdg, item, visitedStatementCount, worklist);
@@ -125,7 +125,7 @@ public class TypingGraphUtil {
         Iterator<Statement> succNodes = sdg.getSuccNodes(item.statement());
         while (succNodes.hasNext()) {
             Statement nextStatement = succNodes.next();
-            worklist.add(worklist.item(nextStatement, newCachedNode));
+            worklist.add(nextStatement, newCachedNode);
         }
     }
 

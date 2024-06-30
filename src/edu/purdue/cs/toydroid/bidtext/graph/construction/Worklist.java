@@ -29,6 +29,14 @@ public class Worklist implements Iterable<Worklist.Item> {
         return delegate.add(item);
     }
 
+    public boolean add(Statement statement) {
+        return add(item(statement));
+    }
+
+    public boolean add(Statement statement, Optional<TypingNode> cachedNode) {
+        return add(item(statement, cachedNode));
+    }
+
     public Item removeFirst() {
         return delegate.removeFirst();
     }
@@ -54,7 +62,6 @@ public class Worklist implements Iterable<Worklist.Item> {
         return new Item(stmt, Optional.empty(), Optional.empty(), Optional.empty());
     }
 
-    //TODO combine wiht add method
     public Item item(Statement statement, Optional<TypingNode> cachedNode) {
         //TODO is cachedNode always statement.getNode()?
         if (statement instanceof ParamCallee paramCallee) {
