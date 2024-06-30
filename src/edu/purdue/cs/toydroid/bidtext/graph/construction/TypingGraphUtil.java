@@ -93,38 +93,39 @@ public class TypingGraphUtil {
         graph.updateFieldTypingRecords();
         logger.info("   - Propagate Typing");
         new Propagator(graph).propagate();
-        // clear typing graph at the end - remove usused data for memory efficiency
+        // clear typing graph at the end - remove unused data for memory efficiency
         graph.clearAtEnd();
     }
 
     private static void buildTypingGraphForStmt(CallGraph cg, Graph<Statement> sdg, Statement stmt,
                                                 Map<Statement, SimpleCounter> visitedStatementCount) {
         // only scan top level stmt
-        if (0 == sdg.getPredNodeCount(stmt)
-            /*
-             * && !(stmt.getKind() == Kind.HEAP_PARAM_CALLEE && stmt.getNode()
-             * .equals(cg.getFakeRootNode()))
-             */) {
-            Worklist worklist = new Worklist();
-            worklist.add(worklist.item(stmt));
-            while (!worklist.isEmpty()) {
-                Worklist.Item item = worklist.removeFirst();
-                buildTypingGraphForStmtBFS(cg, sdg, item, visitedStatementCount, worklist);
-            }
+        if (sdg.getPredNodeCount(stmt) != 0
+            // || (stmt.getKind() == Kind.HEAP_PARAM_CALLEE && stmt.getNode().equals(cg.getFakeRootNode()))
+        ) {
+            return;
+        }
+        Worklist worklist = new Worklist();
+        worklist.add(worklist.item(stmt));
+        while (!worklist.isEmpty()) {
+            Worklist.Item item = worklist.removeFirst();
+            buildTypingGraphForStmtBFS(cg, sdg, item, visitedStatementCount, worklist);
         }
     }
 
     private static void buildTypingGraphForStmtBFS(CallGraph cg, Graph<Statement> sdg, Worklist.Item item,
-                                                   Map<Statement, SimpleCounter> visitedStatementCount,
+                                                   Map<Statement, SimpleCounter> statementVisitCount,
                                                    Worklist worklist) {
 
         Optional<TypingNode> newCachedNode = handleStatement(cg, sdg, item, worklist);
-        if (!statementVisited(sdg, item.statement(), visitedStatementCount)) {
-            Iterator<Statement> succNodes = sdg.getSuccNodes(item.statement());
-            while (succNodes.hasNext()) {
-                Statement nextStatement = succNodes.next();
-                worklist.add(worklist.item(nextStatement, newCachedNode));
-            }
+        if (statementVisited(sdg, item.statement(), statementVisitCount)) {
+            return;
+        }
+
+        Iterator<Statement> succNodes = sdg.getSuccNodes(item.statement());
+        while (succNodes.hasNext()) {
+            Statement nextStatement = succNodes.next();
+            worklist.add(worklist.item(nextStatement, newCachedNode));
         }
     }
 
@@ -158,24 +159,21 @@ public class TypingGraphUtil {
      */
     private static boolean statementVisited(Graph<Statement> sdg, Statement stmt,
                                             Map<Statement, SimpleCounter> visitedStatementsCount) {
-        boolean visited = false;
-        int predNCount = sdg.getPredNodeCount(stmt);
-        if (predNCount > 1) {
-            SimpleCounter counter = visitedStatementsCount.get(stmt);
-            SimpleCounter newCounter = SimpleCounter.increment(counter);
-            if (counter == null) {
-                visitedStatementsCount.put(stmt, newCounter);
-            }
-            if (newCounter.count > 1) {
-                visited = true;
-            }
-            if (newCounter.count >= predNCount) {
-                // visited = true;
-                visitedStatementsCount.remove(stmt);
-            }
+        if (sdg.getPredNodeCount(stmt) <= 1) {
+            return false;
         }
+        SimpleCounter counter = visitedStatementsCount.get(stmt);
+        SimpleCounter newCounter = SimpleCounter.increment(counter); // 1 if counter is null, else counter.count++
+        if (counter == null) {
+            visitedStatementsCount.put(stmt, newCounter);
+        }
+        if (newCounter.count >= sdg.getPredNodeCount(stmt)) {
+            visitedStatementsCount.remove(stmt);
+            // TODO for understanding: does this clear the map for the next iteration of the outer loop (processing of all stmts of sdg)?
+            // return true; // visited = true; was comment in original code
+        }
+        return newCounter.count > 1; // TODO shouldn't this be > sdg.getPredNodeCount(stmt)?
 
-        return visited;
     }
 
     private static Optional<TypingNode> handlePhi(PhiStatement phiStmt) {
