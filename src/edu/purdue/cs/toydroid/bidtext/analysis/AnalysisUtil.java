@@ -45,15 +45,14 @@ public class AnalysisUtil {
         }
     }
 
-    // 0 - nothing; 2 - sink
-    public static int tryRecordInterestingNode(
+    public static InterestingNodeType tryRecordInterestingNode(
             SSAAbstractInvokeInstruction instr, TypingSubGraph sg) {
         String sig = WalaUtil.getSignature(instr);
-        String intestringIndices = AnalysisConfig.getPotentialSink(sig);
+        String interestingIndices = AnalysisConfig.getPotentialSink(sig);
         latestInterestingNode = null;
-        if (intestringIndices != null) {
+        if (interestingIndices != null) {
             InterestingNode node = InterestingNode.getInstance(instr, sg,
-                    intestringIndices);
+                    interestingIndices);
             sinks.add(node);
             logger.info("SINK: {}->{}() in [{}.{}()]",
                     instr.getDeclaredTarget()
@@ -68,9 +67,9 @@ public class AnalysisUtil {
                             .getName()
                             .toString());
             latestInterestingNode = node;
-            return 2;
+            return InterestingNodeType.SINK;
         }
-        return 0;
+        return InterestingNodeType.NOTHING;
     }
 
     public static InterestingNode getLatestInterestingNode() {
