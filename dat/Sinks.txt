@@ -77,6 +77,10 @@ LOG android.util.Log.wtf(Ljava/lang/String;Ljava/lang/String;)I 0 1
 LOG android.util.Log.wtf(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I 0 1 2
 LOG android.util.Log.wtf(Ljava/lang/String;Ljava/lang/Throwable;)I 0 1
 
+LOG java.io.PrintStream.println(Ljava/lang/String;)V 1
+LOG java.io.PrintStream.println(Ljava/lang/Object;)V 1
+LOG java.io.PrintStream.println([C)V 1
+
 IO java.io.BufferedOutputStream.write([BII)V 1
 IO java.io.BufferedOutputStream.write([B)V 1
 IO java.io.BufferedWriter.write([CII)V 1
