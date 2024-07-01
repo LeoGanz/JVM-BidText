@@ -2,7 +2,6 @@ package edu.purdue.cs.toydroid.bidtext.graph;
 
 import com.ibm.wala.ipa.slicer.Statement;
 
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -15,7 +14,9 @@ public class TypingConstraint {
     public static final int GE_APPEND = 0x18;
     public static final int GE_PHI = 0x1c;// phi variables
 
-    public int lhs, rhs, sym;
+    private int lhs;
+    private int rhs;
+    private int sym;
 
     private final List<Statement> path;// propagation path
 
@@ -23,15 +24,11 @@ public class TypingConstraint {
         lhs = l;
         sym = s;
         rhs = r;
-        path = new LinkedList<Statement>();
+        path = new LinkedList<>();
     }
 
     public boolean addPath(Statement stmt) {
         return path.add(stmt);
-    }
-
-    public Iterator<Statement> iteratePath() {
-        return path.iterator();
     }
 
     public List<Statement> getPath() {
@@ -74,5 +71,29 @@ public class TypingConstraint {
         }
         builder.append(rhs);
         return builder.toString();
+    }
+
+    public int getLhs() {
+        return lhs;
+    }
+
+    public void setLhs(int lhs) {
+        this.lhs = lhs;
+    }
+
+    public int getRhs() {
+        return rhs;
+    }
+
+    public void setRhs(int rhs) {
+        this.rhs = rhs;
+    }
+
+    public int getSym() {
+        return sym;
+    }
+
+    public void setSym(int sym) {
+        this.sym = sym;
     }
 }

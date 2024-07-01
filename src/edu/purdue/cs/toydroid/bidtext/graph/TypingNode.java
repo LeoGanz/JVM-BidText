@@ -16,12 +16,12 @@ public class TypingNode extends NodeWithNumber {
     public static final int FAKE_CONSTANT = 0x80;
     private boolean isSpecial = false;
 
-    public int kind;
-    public CGNode cgNode; // the enclosing CGNode
-    public int value; // value number of variable. for fieldRef, a "fake"
+    private int kind;
+    private CGNode cgNode; // the enclosing CGNode
+    private int value; // value number of variable. for fieldRef, a "fake"
     // value number is assigned for easy access in map
-    public int obj; // obj value in instance field
-    public FieldReference fieldRef;
+    private int obj; // obj value in instance field
+    private FieldReference fieldRef;
 
     private TypingNode(CGNode node, int v, int k) {
         cgNode = node;
@@ -120,10 +120,6 @@ public class TypingNode extends NodeWithNumber {
         return false;
     }
 
-    public void changeKind(int k) {
-        kind = k;
-    }
-
     public int hashCode() {
         return value + cgNode.hashCode() * 79;
     }
@@ -139,4 +135,25 @@ public class TypingNode extends NodeWithNumber {
     public boolean isSpecialNode() {
         return isSpecial;
     }
+
+    public int getKind() {
+        return kind;
+    }
+
+    public void setKind(int kind) {
+        this.kind = kind;
+    }
+
+    public CGNode getCgNode() {
+        return cgNode;
+    }
+
+    public int getValue() {
+        return value;
+    }
+
+    public FieldReference getFieldRef() {
+        return fieldRef;
+    }
+
 }

@@ -12,20 +12,16 @@ import java.util.*;
 public class TypingGraph {
     private static Logger logger = LogManager.getLogger(TypingGraph.class);
 
-    public Entrypoint entry;
+    private Entrypoint entrypoint;
     private Map<CGNode, TypingSubGraph> subGraphs;
     private Set<Integer> possibleExternalInput;
-    private Map<String, Set<TypingNode>> fieldIncoming; // possible
-    // incoming
-    // fields
-    private Map<String, Set<TypingNode>> fieldOutgoing; // possible
-    // outgoing
-    // fields
+    private Map<String, Set<TypingNode>> fieldIncoming; // possible incoming fields
+    private Map<String, Set<TypingNode>> fieldOutgoing; // possible outgoing fields
     private final DelegatingNumberedNodeManager<TypingNode> nodeManager;
     private final Map<SimpleGraphNode, TypingRecord> node2Typing;
 
     public TypingGraph(Entrypoint e) {
-        entry = e;
+        entrypoint = e;
         subGraphs = new HashMap<>();
         node2Typing = new HashMap<>();
         nodeManager = new DelegatingNumberedNodeManager<>();
@@ -91,10 +87,6 @@ public class TypingGraph {
         return node2Typing.entrySet().iterator();
     }
 
-    public void mergeClass(TypingNode node1, TypingNode node2) {
-
-    }
-
     public TypingRecord findOrCreateTypingRecord(int nodeId) {
         SimpleGraphNode n = SimpleGraphNode.make(nodeId);
         TypingRecord r = node2Typing.get(n);
@@ -119,7 +111,7 @@ public class TypingGraph {
     public boolean equals(Object obj) {
         if (obj instanceof TypingGraph) {
             TypingGraph g = (TypingGraph) obj;
-            return entry.equals(g.entry);
+            return entrypoint.equals(g.entrypoint);
         }
         return false;
     }
@@ -142,7 +134,7 @@ public class TypingGraph {
         if (null == fieldIncoming) {
             fieldIncoming = new HashMap<>();
         }
-        FieldReference ref = node.fieldRef;
+        FieldReference ref = node.getFieldRef();
         String sig = ref.getSignature();
         Set<TypingNode> nodeSet = fieldIncoming.computeIfAbsent(sig, k -> new HashSet<>());
         nodeSet.add(node);
@@ -152,7 +144,7 @@ public class TypingGraph {
         if (null == fieldOutgoing) {
             fieldOutgoing = new HashMap<>();
         }
-        FieldReference ref = node.fieldRef;
+        FieldReference ref = node.getFieldRef();
         String sig = ref.getSignature();
         Set<TypingNode> nodeSet = fieldOutgoing.computeIfAbsent(sig, k -> new HashSet<>());
         nodeSet.add(node);
@@ -205,11 +197,7 @@ public class TypingGraph {
         if (!node.isField()) {
             return false;
         }
-        return fieldOutgoing.containsKey(node.fieldRef.getSignature());
-    }
-
-    public Set<TypingNode> getTypingClass(TypingNode node) {
-        return null;
+        return fieldOutgoing.containsKey(node.getFieldRef().getSignature());
     }
 
     /**
@@ -241,17 +229,17 @@ public class TypingGraph {
                 Set<TypingConstraint> cons = rec.getBackwardTypingConstraints();
                 Set<TypingConstraint> toRemove = new HashSet<>();
                 for (TypingConstraint rc : cons) {
-                    TypingRecord nrec = getTypingRecord(rc.rhs);
+                    TypingRecord nrec = getTypingRecord(rc.getRhs());
                     if (nrec != null) {
                         Set<TypingConstraint> fwd = nrec.getForwardTypingConstraints();
                         for (TypingConstraint c : fwd) {
-                            if (c.lhs == tn.getGraphNodeId()) {
+                            if (c.getLhs() == tn.getGraphNodeId()) {
                                 toRemove.add(c);
                             }
                         }
                         fwd.removeAll(toRemove);
 
-                        TypingNode ntn = getNode(rc.rhs);
+                        TypingNode ntn = getNode(rc.getRhs());
                         if (ntn != null) {
                             if (!ntn.isConstant() && !ntn.isField()
                                     && !ntn.isSpecialNode()
@@ -299,5 +287,9 @@ public class TypingGraph {
         subGraphs = null;
         // System.gc();
         return nodeManager.getNumberOfNodes() > 0;
+    }
+
+    public Entrypoint getEntrypoint() {
+        return entrypoint;
     }
 }

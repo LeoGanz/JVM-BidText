@@ -118,9 +118,9 @@ public class InvocationHandler {
         if (paramNode.isConstant()) {
             String str;
             if (paramNode.isString()) {
-                str = cgNode.getIR().getSymbolTable().getStringValue(paramNode.value);
+                str = cgNode.getIR().getSymbolTable().getStringValue(paramNode.getValue());
             } else {
-                str = cgNode.getIR().getSymbolTable().getConstantValue(paramNode.value).toString();
+                str = cgNode.getIR().getSymbolTable().getConstantValue(paramNode.getValue()).toString();
             }
             thisRecord.addTypingAppend(str);
         } else {

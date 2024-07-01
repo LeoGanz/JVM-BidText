@@ -41,7 +41,7 @@ public class Propagator {
             TypingRecord rec = worklist.removeFirst();
             backwardPropagation.propagateOneRecordBackward(worklist, rec);
             forwardPropagation.propagateOneRecordForward(worklist, rec);
-            TypingNode node = typingGraph.getNode(rec.initialId);
+            TypingNode node = typingGraph.getNode(rec.getInitialId());
             if (node != null && !(node.isField() || node.isSpecialNode())) {
                 rec.emptyThePaths();
             }
@@ -86,7 +86,7 @@ public class Propagator {
                 // currentTypingGraph.findOrCreateTypingRecord(tn.getGraphNodeId());
                 // }
                 if (tn.isString()) {
-                    String text = tn.cgNode.getIR().getSymbolTable().getStringValue(tn.value);
+                    String text = tn.getCgNode().getIR().getSymbolTable().getStringValue(tn.getValue());
                     if (text != null) {
                         text = text.trim();
                         if (!text.isEmpty()) {
@@ -97,7 +97,7 @@ public class Propagator {
                 } else if (tn.isFakeString()) {
                     worklist.add(rec);
                 } else {
-                    Object o = tn.cgNode.getIR().getSymbolTable().getConstantValue(tn.value);
+                    Object o = tn.getCgNode().getIR().getSymbolTable().getConstantValue(tn.getValue());
                     rec.addTypingConstant(o);
                     worklist.add(rec);
                 }

@@ -13,34 +13,30 @@ import java.util.Set;
 
 public class TypingSubGraph {
 
-    public CGNode cgNode;
-    public TypingGraph typingGraph;
-    private int fakeInitialValueNumber;
+    private final CGNode cgNode;
+    private final TypingGraph typingGraph;
     private int fakeValue;
-    private Set<TypingNode> stringConstantNodes;
-    private Map<Integer, TypingNode> value2Nodes;
-    private Map<FieldReference, TypingNode> staticField2Nodes;
-    private IR ir;
-    private SymbolTable symTable;
+    private final Set<TypingNode> stringConstantNodes;
+    private final Map<Integer, TypingNode> value2Nodes;
+    private final SymbolTable symTable;
     private Set<SSAAbstractInvokeInstruction> potentialGlobalConstStringLoc;
 
     public TypingSubGraph(CGNode node, TypingGraph c) {
-        cgNode = node;
-        typingGraph = c;
+        this.cgNode = node;
+        this.typingGraph = c;
         stringConstantNodes = new HashSet<>();
         value2Nodes = new HashMap<>();
-        staticField2Nodes = new HashMap<>();
-        ir = cgNode.getIR();
+        // set initial fake value number
+        IR ir = cgNode.getIR();
         if (ir != null) {
             symTable = ir.getSymbolTable();
-            fakeInitialValueNumber = ir.getControlFlowGraph()
+            fakeValue = ir.getControlFlowGraph()
                     .getNumberOfNodes() * 1000 + 999;
         } else {
-            symTable = new SymbolTable(cgNode.getMethod()
+            symTable = new SymbolTable(getCgNode().getMethod()
                     .getNumberOfParameters());
-            fakeInitialValueNumber = 999;
+            fakeValue = 999;
         }
-        fakeValue = fakeInitialValueNumber;
     }
 
     public TypingNode getByValue(Integer v) {
@@ -58,9 +54,9 @@ public class TypingSubGraph {
     public TypingNode findOrCreate(int v) {
         TypingNode node = value2Nodes.get(v);
         if (node == null) {
-            node = new TypingNode(cgNode, v);
+            node = new TypingNode(getCgNode(), v);
             value2Nodes.put(v, node);
-            typingGraph.addNode(node);
+            getTypingGraph().addNode(node);
             if (symTable.isStringConstant(v)) {
                 node.markStringKind();
                 stringConstantNodes.add(node);
@@ -73,32 +69,31 @@ public class TypingSubGraph {
 
     public TypingNode createInstanceFieldNode(int v, FieldReference f) {
         int fv = nextFakeValue();
-        TypingNode node = new TypingNode(cgNode, fv, v, f);
+        TypingNode node = new TypingNode(getCgNode(), fv, v, f);
         value2Nodes.put(fv, node);
-        typingGraph.addNode(node);
+        getTypingGraph().addNode(node);
         return node;
     }
 
     public TypingNode createStaticFieldNode(FieldReference f) {
         int fv = nextFakeValue();
-        TypingNode node = new TypingNode(cgNode, fv, f);
+        TypingNode node = new TypingNode(getCgNode(), fv, f);
         value2Nodes.put(fv, node);
-        typingGraph.addNode(node);
+        getTypingGraph().addNode(node);
         return node;
     }
 
     public TypingNode createFakeConstantNode() {
         int fv = nextFakeValue();
-        TypingNode node = new TypingNode(cgNode, fv);
+        TypingNode node = new TypingNode(getCgNode(), fv);
         node.markFakeStringKind();
         value2Nodes.put(fv, node);
-        typingGraph.addNode(node);
+        getTypingGraph().addNode(node);
         return node;
     }
 
     public int nextFakeValue() {
-        int fv = fakeValue++;
-        return fv;
+        return fakeValue++;
     }
 
     public void recordPotentialGStringLocation(SSAAbstractInvokeInstruction inst) {
@@ -111,4 +106,13 @@ public class TypingSubGraph {
     public Set<SSAAbstractInvokeInstruction> potentialGStringLocations() {
         return potentialGlobalConstStringLoc;
     }
+
+    public CGNode getCgNode() {
+        return cgNode;
+    }
+
+    public TypingGraph getTypingGraph() {
+        return typingGraph;
+    }
+
 }

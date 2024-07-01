@@ -507,7 +507,7 @@ public class TypingGraphUtil {
         TypingNode defNode = sg.findOrCreate(def);
         // logger.info("PHI: {}", inst.toString());
         Set<Integer> dupSet = new HashSet<>();
-        TypingRecord defRec = sg.typingGraph.findOrCreateTypingRecord(defNode.getGraphNodeId());
+        TypingRecord defRec = sg.getTypingGraph().findOrCreateTypingRecord(defNode.getGraphNodeId());
         for (int i = 0; i < nUse; i++) {
             // logger.info(" i = {}:{}", i, inst.getUse(i));
             int valueNumber = inst.getUse(i);
@@ -519,7 +519,7 @@ public class TypingGraphUtil {
             }
             dupSet.add(valueNumber);
             TypingNode useNode = sg.findOrCreate(valueNumber);
-            TypingRecord useRec = sg.typingGraph.findOrCreateTypingRecord(useNode.getGraphNodeId());
+            TypingRecord useRec = sg.getTypingGraph().findOrCreateTypingRecord(useNode.getGraphNodeId());
             TypingConstraint c =
                     new TypingConstraint(defNode.getGraphNodeId(), TypingConstraint.GE_PHI, useNode.getGraphNodeId());
             defRec.addBackwardTypingConstraint(c);

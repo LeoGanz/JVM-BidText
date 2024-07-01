@@ -22,15 +22,15 @@ public class ForwardPropagation {
         boolean changed = false;
         Set<TypingConstraint> constraints = record.getForwardTypingConstraints();
         for (TypingConstraint ct : constraints) {
-            int nextId = ct.lhs;
+            int nextId = ct.getLhs();
             TypingNode nextNode = typingGraph.getNode(nextId);
             TypingRecord nextRec = typingGraph.getTypingRecord(nextId);
             // System.err.println(record.getTypingTexts());
             if (nextNode != null && !nextNode.isConstant() && nextRec.merge(record, ct.getPath())) {
                 worklist.add(nextRec);
                 changed = true;
-                if (ct.sym == TypingConstraint.EQ) {
-                    TypingNode currNode = typingGraph.getNode(ct.rhs);
+                if (ct.getSym() == TypingConstraint.EQ) {
+                    TypingNode currNode = typingGraph.getNode(ct.getRhs());
                     if (currNode != null && currNode.isConstant()) {
                         nextNode.markFakeConstantKind();
                     }

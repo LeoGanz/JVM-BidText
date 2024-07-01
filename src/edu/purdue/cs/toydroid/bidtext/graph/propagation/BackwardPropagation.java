@@ -43,8 +43,8 @@ class BackwardPropagation {
 
     private boolean handleGeAssignListSize1() {
         TypingConstraint c = geAssignList.removeFirst();
-        TypingNode nextNode = typingGraph.getNode(c.rhs);
-        TypingRecord nextRec = typingGraph.getTypingRecord(c.rhs);
+        TypingNode nextNode = typingGraph.getNode(c.getRhs());
+        TypingRecord nextRec = typingGraph.getTypingRecord(c.getRhs());
         if (nextNode != null && !nextNode.isConstant() && nextRec.merge(record, c.getPath())) {
             worklist.add(nextRec);
             return true;
@@ -55,12 +55,12 @@ class BackwardPropagation {
     private boolean handleGeAssignListSize2() {
         TypingConstraint tc0 = geAssignList.removeFirst();
         TypingConstraint tc1 = geAssignList.removeFirst();
-        if (tc0.lhs != tc1.lhs) {
+        if (tc0.getLhs() != tc1.getLhs()) {
             logger.error("    ? Wrong Assignment with different LHS: {} -- {}", tc0.toString(), tc1.toString());
             return false;
         }
-        TypingRecord rec0 = typingGraph.getTypingRecord(tc0.rhs);
-        TypingRecord rec1 = typingGraph.getTypingRecord(tc1.rhs);
+        TypingRecord rec0 = typingGraph.getTypingRecord(tc0.getRhs());
+        TypingRecord rec1 = typingGraph.getTypingRecord(tc1.getRhs());
         DoubleChangeTracker changeTracker = new DoubleChangeTracker();
 
         propagateTexts(rec0, rec1, tc0, changeTracker);
@@ -191,8 +191,8 @@ class BackwardPropagation {
         geAssignList = new LinkedList<>();
         phiList = new LinkedList<>();
         for (TypingConstraint ct : constraints) {
-            int nextId = ct.rhs;
-            int sym = ct.sym;
+            int nextId = ct.getRhs();
+            int sym = ct.getSym();
             TypingNode nextNode;
             TypingRecord nextRec = typingGraph.getTypingRecord(nextId);
             if (sym == TypingConstraint.EQ || sym == TypingConstraint.GE) {
@@ -237,7 +237,7 @@ class BackwardPropagation {
         Set<SimpleGraphNode> allInputs = new HashSet<>();
         Set<SimpleGraphNode> allOutputs = new HashSet<>();
         for (TypingConstraint typingConstraint : phiList) {
-            TypingRecord tr = typingGraph.getTypingRecord(typingConstraint.rhs);
+            TypingRecord tr = typingGraph.getTypingRecord(typingConstraint.getRhs());
             allTexts.addAll(tr.getTypingTexts().keySet());
             allConst.addAll(tr.getTypingConstants());
             allInputs.addAll(tr.getInputFields().keySet());
@@ -247,11 +247,11 @@ class BackwardPropagation {
 
         boolean anyChanged = false;
         for (TypingConstraint typingConstraint : phiList) {
-            TypingNode tn = typingGraph.getNode(typingConstraint.rhs);
+            TypingNode tn = typingGraph.getNode(typingConstraint.getRhs());
             if (tn == null || tn.isConstant()) {
                 continue;
             }
-            TypingRecord typingRecord = typingGraph.getTypingRecord(typingConstraint.rhs);
+            TypingRecord typingRecord = typingGraph.getTypingRecord(typingConstraint.getRhs());
 
             boolean changed = false;
             changed |= phiPropagateTexts(typingConstraint, allTexts, typingRecord);

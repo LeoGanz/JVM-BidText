@@ -37,7 +37,7 @@ public class InterestingNode {
     }
 
     public TypingGraph enclosingTypingGraph() {
-        return subGraph.typingGraph;
+        return subGraph.getTypingGraph();
     }
 
     public Iterator<TypingNode> iterateInterestingArgs() {
@@ -67,7 +67,7 @@ public class InterestingNode {
     public boolean equals(Object obj) {
         if (obj instanceof InterestingNode) {
             return instr.equals(((InterestingNode) obj).instr)
-                    && subGraph.cgNode.equals(((InterestingNode) obj).subGraph.cgNode);
+                    && subGraph.getCgNode().equals(((InterestingNode) obj).subGraph.getCgNode());
         }
         return false;
     }

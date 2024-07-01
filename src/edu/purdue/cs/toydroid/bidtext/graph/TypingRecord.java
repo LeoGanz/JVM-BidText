@@ -10,7 +10,7 @@ public class TypingRecord {
     public static final String APPEND_POSTFIX = ">]}";
     public static final String APPEND_VAR_PREFIX = "+*^";
     public static final String APPEND_VAR_POSTFIX = "^*+";
-    public int initialId;
+    private int initialId;
     private Map<String, List<Statement>> typingTexts;
     private Set<Object> typingConstants;
     private Map<SimpleGraphNode, List<Statement>> inputFields;
@@ -250,16 +250,16 @@ public class TypingRecord {
     }
 
     public boolean addForwardTypingConstraint(TypingConstraint c) {
-        if (c.rhs != initialId) {
-            c.rhs = initialId;
+        if (c.getRhs() != initialId) {
+            c.setRhs(initialId);
         }
         return forwardConstraints.add(c);
     }
 
     public boolean addBackwardTypingConstraint(TypingConstraint c) {
-		if (c.lhs != initialId) {
-			c.lhs = initialId;
-		}
+        if (c.getLhs() != initialId) {
+            c.setLhs(initialId);
+        }
         return backwardConstraints.add(c);
     }
 
@@ -352,4 +352,9 @@ public class TypingRecord {
             localOutputs.put(key, null);
         }
     }
+
+    public int getInitialId() {
+        return initialId;
+    }
+
 }

@@ -25,7 +25,7 @@ public class AnalysisUtil {
 
     private static InterestingNode latestInterestingNode = null;
 
-    public static boolean DUMP_VERBOSE = false;
+    public static boolean DUMP_VERBOSE = true;
 
     public static void associateLayout2Activity(
             SSAAbstractInvokeInstruction instr, CGNode cgNode) {
@@ -51,21 +51,14 @@ public class AnalysisUtil {
         String interestingIndices = AnalysisConfig.getPotentialSink(sig);
         latestInterestingNode = null;
         if (interestingIndices != null) {
-            InterestingNode node = InterestingNode.getInstance(instr, sg,
-                    interestingIndices);
+            InterestingNode node = InterestingNode.getInstance(instr, sg, interestingIndices);
             sinks.add(node);
+            String sinkClassName = instr.getDeclaredTarget().getDeclaringClass().getName().toString();
+            String sinkMethodName = instr.getDeclaredTarget().getName().toString();
+            String sinkLocationClassName = sg.getCgNode().getMethod().getDeclaringClass().getName().toString();
+            String sinkLocationMethodName = sg.getCgNode().getMethod().getName().toString();
             logger.info("SINK: {}->{}() in [{}.{}()]",
-                    instr.getDeclaredTarget()
-                            .getDeclaringClass()
-                            .getName()
-                            .toString(), instr.getDeclaredTarget()
-                            .getName()
-                            .toString(), sg.cgNode.getMethod()
-                            .getDeclaringClass()
-                            .getName()
-                            .toString(), sg.cgNode.getMethod()
-                            .getName()
-                            .toString());
+                    sinkClassName, sinkMethodName, sinkLocationClassName, sinkLocationMethodName);
             latestInterestingNode = node;
             return InterestingNodeType.SINK;
         }
@@ -94,198 +87,85 @@ public class AnalysisUtil {
 
     private static void dumpTextForSink(InterestingNode sink, int idx) throws IOException {
         logger.info(" - dump text for sink: {}", sink.sinkSignature());
-        Iterator<TypingNode> args = sink.iterateInterestingArgs();
         File resultFile = new File(idx + "." + sink.tag + ".txt");
 
-        BufferedWriter writer = null;
+        PrintWriter writer;
         try {
-            writer = new BufferedWriter(new FileWriter(resultFile));
-            writer.write("SINK [");
-            writer.write(sink.sinkSignature());
-            writer.write(']');
-            writer.newLine();
-            writer.write(" in [");
-            writer.write(sink.enclosingTypingSubGraph().cgNode.getMethod()
-                    .getSignature());
-            writer.write(']');
-            writer.newLine();
-            writer.flush();
+            writer = new PrintWriter(resultFile);
         } catch (IOException e) {
-            logger.error("Fail to create dump file for [{}] {}", idx,
-                    sink.sinkSignature());
-            if (writer != null) {
-                try {
-                    writer.close();
-                } catch (Exception ignored) {
-                }
-            }
+            logger.error("Fail to create dump file for [{}] {}", idx, sink.sinkSignature());
             if (resultFile.exists()) {
                 resultFile.delete();
             }
             return;
         }
-        long fLen = resultFile.length();
+        printHeader(sink, writer);
+        long fileLengthAfterWritingHeader = resultFile.length();
 
         Map<String, List<Statement>> codeTexts = new HashMap<>();
         Set<Integer> constants = new HashSet<>();
+        Iterator<TypingNode> args = sink.iterateInterestingArgs();
         while (args.hasNext()) {
             TypingNode gNode = args.next();
             if (gNode.isConstant()) {
                 continue;
             }
-            TypingSubGraph sg = sink.enclosingTypingSubGraph();
             TypingGraph graph = sink.enclosingTypingGraph();
-            dumpTextForNode(gNode, graph, codeTexts, constants);
-            dumpTextForFields(gNode, graph, codeTexts, constants);
+            collectTextsForNode(gNode, graph, codeTexts, constants);
+            collectTextsForFields(gNode, graph, codeTexts, constants);
         }
 
         TextAnalysis textAnalysis = new TextAnalysis();
         String sensitiveTag = textAnalysis.analyze(codeTexts, false);
 
-        Map<String, List<Statement>> guiTexts = new HashMap<>();
-        dumpTextForPossibleGUI(sink, guiTexts);
-
-        // for each widget we collected, if anyone exists in multiple layouts,
-        // all those layouts are recorded. but if we can find more than one
-        // widget, we may find out the correct layout.
-        Map<Integer, IdCountPair> rankedLayout = new HashMap<>();
-        Set<Integer> toRemove = new HashSet<>();
-        for (Integer iObj : constants) {
-            String guiText = ResourceUtil.getLayoutText(iObj);
-            if (guiText != null) {
-                if (!guiText.isEmpty()) {
-                    try {
-                        BufferedReader reader = new BufferedReader(
-                                new StringReader(guiText));
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            line = line.trim();
-                            if (!line.isEmpty()) {
-                                guiTexts.put(line, null);
-                            }
-                        }
-                    } catch (Exception ignored) {
-
-                    }
-                    toRemove.add(iObj);
-                }
-            } else {
-                Set<Integer> s = ResourceUtil.getLayouts(iObj);
-                if (s != null) {
-                    for (Integer i : s) {
-                        IdCountPair p = rankedLayout.get(i);
-                        if (p == null) {
-                            p = new IdCountPair(i);
-                            rankedLayout.put(i, p);
-                        } else {
-                            p.increment();
-                        }
-                    }
-                }
-            }
-        }
-
-        Set<Integer> interestingLayouts = new HashSet<>();
-        int nRankedLayouts = rankedLayout.size();
-        if (nRankedLayouts == 1) {
-            IdCountPair p = rankedLayout.values().iterator().next();
-            Integer layoutId = p.id;
-            interestingLayouts.add(layoutId);
-        } else if (nRankedLayouts > 1) {
-            Collection<IdCountPair> toRank = rankedLayout.values();
-            Object[] objArray = toRank.toArray();
-            Arrays.sort(objArray);
-            int largestRank = -1;
-            for (int i = nRankedLayouts - 1; i >= 0; i--) {
-                IdCountPair p = (IdCountPair) objArray[i];
-                if (largestRank <= p.count) {
-                    interestingLayouts.add(p.id);
-                    largestRank = p.count;
-                } else {
-                    break;
-                }
-            }
-        }
-        for (Integer lId : interestingLayouts) {
-            String guiText = ResourceUtil.getLayoutText(lId);
-            if (guiText != null && !guiText.isEmpty()) {
-                try {
-                    BufferedReader reader = new BufferedReader(
-                            new StringReader(guiText));
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        line = line.trim();
-                        if (!line.isEmpty()) {
-                            guiTexts.put(line, null);
-                        }
-                    }
-                } catch (Exception ignored) {
-
-                }
-            }
-        }
-
-        String guiSensitiveTag = textAnalysis.analyze(guiTexts, true);
 
         if (DUMP_VERBOSE) {
             if (!sensitiveTag.isEmpty()) {
                 logger.debug("   $[CODE] {}", sensitiveTag);
-                try {
-                    writer.write(" ^[CODE]: ");
-                    writer.write(sensitiveTag);
-                    writer.newLine();
-                } catch (IOException ignored) {
-
-                }
-            }
-        }
-
-        if (!guiSensitiveTag.isEmpty()) {
-            logger.debug("   $[GUI] {}", guiSensitiveTag);
-            try {
-                writer.write(" ^[GUI]: ");
-                writer.write(guiSensitiveTag);
-                writer.newLine();
-            } catch (IOException ignored) {
-
+                writer.print(" ^[CODE]: ");
+                writer.print(sensitiveTag);
+                writer.println();
             }
         }
 
         if (DUMP_VERBOSE) {
-            for (String t : codeTexts.keySet()) {
-                try {
-                    writer.write(" - ");
-                    writer.write(t);
-                    writer.newLine();
-                } catch (IOException ignored) {
-                }
-            }
-            for (String t : guiTexts.keySet()) {
-                try {
-                    writer.write(" + ");
-                    writer.write(t);
-                    writer.newLine();
-                } catch (IOException ignored) {
-                }
-            }
-            constants.removeAll(toRemove);
-            for (Integer iObj : constants) {
-                try {
-                    writer.write(" # 0x");
-                    writer.write(Integer.toHexString(iObj));
-                    writer.newLine();
-                    String guiText = ResourceUtil.getLayoutText(iObj);
-                    if (guiText != null && !guiText.isEmpty()) {
-                        writer.write(guiText);
-                        writer.newLine();
-                    }
-                } catch (IOException ignored) {
-                }
-            }
+            printCollectedTexts(writer, codeTexts, constants);
         }
         // dumpTextForPossibleGUI(sink, writer);
 
         // dump paths
+        printPaths(sink, textAnalysis, writer);
+
+        writer.flush();
+        writer.close();
+
+        if (resultFile.exists() && resultFile.length() <= fileLengthAfterWritingHeader + 10) {
+            logger.debug("No information found for sink. Deleting log file.");
+            resultFile.delete();
+        }
+    }
+
+    private static void printCollectedTexts(PrintWriter writer, Map<String, List<Statement>> codeTexts,
+                                            Set<Integer> constants) {
+        writer.println("Collected the following texts:");
+        for (String t : codeTexts.keySet()) {
+            writer.print(" - ");
+            writer.print(t);
+            writer.println();
+        }
+        for (Integer iObj : constants) {
+            writer.print(" # 0x");
+            writer.print(Integer.toHexString(iObj));
+            writer.println();
+            String guiText = ResourceUtil.getLayoutText(iObj);
+            if (guiText != null && !guiText.isEmpty()) {
+                writer.print(guiText);
+                writer.println();
+            }
+        }
+    }
+
+    private static void printPaths(InterestingNode sink, TextAnalysis textAnalysis, PrintWriter writer) {
         Map<String, List<Statement>> text2Path = textAnalysis.getText2Path();
         Set<Map.Entry<String, List<Statement>>> pathSet = text2Path.entrySet();
         for (Map.Entry<String, List<Statement>> entry : pathSet) {
@@ -294,50 +174,40 @@ public class AnalysisUtil {
             if (path == null/* || path.isEmpty() */) {
                 continue;
             }
-            try {
-                writer.newLine();
-                writer.newLine();
-                writer.write("********");
-                writer.write(text.trim());
-                writer.write("********");
-                writer.newLine();
-                for (Statement stmt : path) {
-                    writer.write(stmt.toString());
-                    writer.newLine();
-                }
-                writer.write("[[ ");
-                writer.write(sink.instruction());
-                writer.write(" ]]");
-                writer.newLine();
-                writer.flush();
-            } catch (IOException ignored) {
-
+            writer.println();
+            writer.println();
+            writer.print("********");
+            writer.print(text.trim());
+            writer.print("********");
+            writer.println();
+            for (Statement stmt : path) {
+                writer.print(stmt.toString());
+                writer.println();
             }
-        }
-
-        try {
+            writer.print("[[ ");
+            writer.print(sink.instruction());
+            writer.print(" ]]");
+            writer.println();
             writer.flush();
-            writer.close();
-            writer = null;
-        } catch (IOException ignored) {
-        } finally {
-            if (null != writer) {
-                try {
-                    writer.close();
-                } catch (IOException ignored) {
-                }
-            }
-        }
-
-        if (resultFile.exists() && fLen + 10 >= resultFile.length()) {
-            resultFile.delete();
         }
     }
 
-    public static void dumpTextForNode(TypingNode n,
-                                       TypingGraph graph, Map<String, List<Statement>> texts,
-                                       Set<Integer> constants) {
-        TypingRecord record = graph.getTypingRecord(n.getGraphNodeId());
+    private static void printHeader(InterestingNode sink, PrintWriter writer) {
+        writer.print("SINK [");
+        writer.print(sink.sinkSignature());
+        writer.print(']');
+        writer.println();
+        writer.print(" in [");
+        writer.print(sink.enclosingTypingSubGraph().getCgNode().getMethod().getSignature());
+        writer.print(']');
+        writer.println();
+        writer.flush();
+    }
+
+    public static void collectTextsForNode(TypingNode node,
+                                           TypingGraph graph, Map<String, List<Statement>> texts,
+                                           Set<Integer> constants) {
+        TypingRecord record = graph.getTypingRecord(node.getGraphNodeId());
         if (record == null) {
             return;
         }
@@ -350,29 +220,29 @@ public class AnalysisUtil {
     }
 
     // Fields that across entrypoints
-    private static void dumpTextForFields(TypingNode n,
-                                          TypingGraph graph, Map<String, List<Statement>> texts,
-                                          Set<Integer> constants) {
-        TypingRecord record = graph.getTypingRecord(n.getGraphNodeId());
+    private static void collectTextsForFields(TypingNode node,
+                                              TypingGraph graph, Map<String, List<Statement>> texts,
+                                              Set<Integer> constants) {
+        TypingRecord record = graph.getTypingRecord(node.getGraphNodeId());
         if (record == null) {
             return;
         }
         List<Statement> fieldPath = new LinkedList<>();
         Stack<TypingGraph> visited = new Stack<>();
         List<Object> worklist = new LinkedList<>();
-        dumpTextForFieldsHelper(graph, record, 0, visited, fieldPath, worklist,
+        collectTextsForFieldsHelper(graph, record, 0, visited, fieldPath, worklist,
                 texts, constants, true);
         visited.clear();
         worklist.clear();
-        dumpTextForFieldsHelper(graph, record, 0, visited, fieldPath, worklist,
+        collectTextsForFieldsHelper(graph, record, 0, visited, fieldPath, worklist,
                 texts, constants, false);
     }
 
-    private static void dumpTextForFieldsHelper(TypingGraph graph,
-                                                TypingRecord record, int permLevel, Stack<TypingGraph> visited,
-                                                List<Statement> fieldPath, List<Object> worklist,
-                                                Map<String, List<Statement>> texts, Set<Integer> constants,
-                                                boolean isBackward) {
+    private static void collectTextsForFieldsHelper(TypingGraph graph,
+                                                    TypingRecord record, int permLevel, Stack<TypingGraph> visited,
+                                                    List<Statement> fieldPath, List<Object> worklist,
+                                                    Map<String, List<Statement>> texts, Set<Integer> constants,
+                                                    boolean isBackward) {
         if (permLevel >= 2) {
             return;
         }
@@ -385,7 +255,7 @@ public class AnalysisUtil {
         }
         visited.push(graph);
         for (SimpleGraphNode sgn : sources.keySet()) {
-            TypingNode tn = graph.getNode(sgn.node);
+            TypingNode tn = graph.getNode(sgn.nodeId());
             if (tn.isField()) {
                 List<Statement> tempPath = new LinkedList<>();
                 boolean startAdd = false, endAdd = false;
@@ -414,12 +284,12 @@ public class AnalysisUtil {
                             SSAInstruction inst = nstmt.getInstruction();
                             if (isBackward
                                     && inst instanceof SSAGetInstruction
-                                    && tn.fieldRef.getSignature()
+                                    && tn.getFieldRef().getSignature()
                                     .equals((((SSAGetInstruction) inst).getDeclaredField().getSignature()))) {
                                 startAdd = true;
                             } else if (!isBackward
                                     && inst instanceof SSAPutInstruction
-                                    && tn.fieldRef.getSignature()
+                                    && tn.getFieldRef().getSignature()
                                     .equals((((SSAPutInstruction) inst).getDeclaredField().getSignature()))) {
                                 startAdd = true;
                             }
@@ -453,7 +323,7 @@ public class AnalysisUtil {
                 } else if (!fieldPath.isEmpty()) {
                     tempPath.clear();
                 }
-                String sig = tn.fieldRef.getSignature();// System.err.println(sig);
+                String sig = tn.getFieldRef().getSignature();// System.err.println(sig);
                 Map<Entrypoint, TypingGraph> entry2Graph = TypingGraphUtil.entry2Graph;
                 Set<Map.Entry<Entrypoint, TypingGraph>> entrySet = entry2Graph.entrySet();
                 for (Map.Entry<Entrypoint, TypingGraph> entry : entrySet) {
@@ -560,7 +430,7 @@ public class AnalysisUtil {
                         constants.add((Integer) c);
                     }
                 }
-                dumpTextForFieldsHelper(graph, rec, permLevel + 1, visited, fs,
+                collectTextsForFieldsHelper(graph, rec, permLevel + 1, visited, fs,
                         worklist, texts, constants, isBackward);
             }
         }
@@ -569,7 +439,7 @@ public class AnalysisUtil {
     // currently only for the GUI that triggers the sink operation
     private static void dumpTextForPossibleGUI(InterestingNode sink,
                                                Map<String, List<Statement>> texts) {
-        String epClass = sink.enclosingTypingGraph().entry.getMethod()
+        String epClass = sink.enclosingTypingGraph().getEntrypoint().getMethod()
                 .getDeclaringClass()
                 .getName()
                 .toString();
@@ -582,9 +452,9 @@ public class AnalysisUtil {
                             new StringReader(text));
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        // writer.write(" + ");
-                        // writer.write(line);
-                        // writer.newLine();
+                        // writer.print(" + ");
+                        // writer.print(line);
+                        // writer.println();
                         texts.put(line, null);
                     }
                 } catch (IOException ignored) {
