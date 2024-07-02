@@ -101,17 +101,17 @@ public class TypingGraphUtil {
         ) {
             return;
         }
-        Worklist worklist = new Worklist();
+        ConstructionWorklist worklist = new ConstructionWorklist();
         worklist.add(stmt);
         while (!worklist.isEmpty()) {
-            Worklist.Item item = worklist.removeFirst();
+            ConstructionWorklist.Item item = worklist.removeFirst();
             buildTypingGraphForStmtBFS(cg, sdg, item, visitedStatementCount, worklist);
         }
     }
 
-    private static void buildTypingGraphForStmtBFS(CallGraph cg, Graph<Statement> sdg, Worklist.Item item,
+    private static void buildTypingGraphForStmtBFS(CallGraph cg, Graph<Statement> sdg, ConstructionWorklist.Item item,
                                                    Map<Statement, SimpleCounter> statementVisitCount,
-                                                   Worklist worklist) {
+                                                   ConstructionWorklist worklist) {
 
         Optional<TypingNode> newCachedNode = handleStatement(cg, sdg, item, worklist);
         if (statementVisited(sdg, item.statement(), statementVisitCount)) {
@@ -125,8 +125,9 @@ public class TypingGraphUtil {
         }
     }
 
-    private static Optional<TypingNode> handleStatement(CallGraph cg, Graph<Statement> sdg, Worklist.Item item,
-                                                        Worklist worklist) {
+    private static Optional<TypingNode> handleStatement(CallGraph cg, Graph<Statement> sdg,
+                                                        ConstructionWorklist.Item item,
+                                                        ConstructionWorklist worklist) {
         Statement stmt = item.statement();
         TypingNode cachedNode = item.cachedNode().orElse(null);
         Kind kind = stmt.getKind();
@@ -182,7 +183,8 @@ public class TypingGraphUtil {
         return Optional.empty();
     }
 
-    private static Optional<TypingNode> handleNormal(NormalStatement nstmt, TypingNode cachedNode, Worklist worklist) {
+    private static Optional<TypingNode> handleNormal(NormalStatement nstmt, TypingNode cachedNode,
+                                                     ConstructionWorklist worklist) {
         CGNode cgNode = nstmt.getNode();
         if (cgNode.getMethod().isSynthetic()) {
             return Optional.empty();
@@ -219,7 +221,8 @@ public class TypingGraphUtil {
         return newCachedNode == null ? Optional.empty() : Optional.of(newCachedNode);
     }
 
-    private static Optional<TypingNode> handleParamCaller(Graph<Statement> sdg, ParamCaller pcstmt, Worklist worklist) {
+    private static Optional<TypingNode> handleParamCaller(Graph<Statement> sdg, ParamCaller pcstmt,
+                                                          ConstructionWorklist worklist) {
         CGNode cgNode = pcstmt.getNode();
         if (cgNode.getMethod().isSynthetic()) {
             return Optional.empty();
@@ -454,7 +457,7 @@ public class TypingGraphUtil {
 
 
     private static TypingNode handleSSAReturn(NormalStatement stmt, SSAReturnInstruction inst, TypingSubGraph sg,
-                                              Worklist worklist) {
+                                              ConstructionWorklist worklist) {
         if (!inst.returnsVoid()) {
             int ret = inst.getResult();
             worklist.cacheLatestStatement(stmt);

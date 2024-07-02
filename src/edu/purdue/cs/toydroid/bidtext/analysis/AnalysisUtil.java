@@ -13,7 +13,9 @@ import edu.purdue.cs.toydroid.utils.WalaUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 
 public class AnalysisUtil {
@@ -22,20 +24,13 @@ public class AnalysisUtil {
     private static final Set<InterestingNode> sinks = new HashSet<>();
 
     private static final Map<String, Integer> activity2Layout = new HashMap<>();
-
+    public static boolean DUMP_VERBOSE = true;
     private static InterestingNode latestInterestingNode = null;
 
-    public static boolean DUMP_VERBOSE = true;
-
-    public static void associateLayout2Activity(
-            SSAAbstractInvokeInstruction instr, CGNode cgNode) {
-        String act = instr.getDeclaredTarget()
-                .getDeclaringClass()
-                .getName()
-                .toString();
+    public static void associateLayout2Activity(SSAAbstractInvokeInstruction instr, CGNode cgNode) {
+        String act = instr.getDeclaredTarget().getDeclaringClass().getName().toString();
         String selector = instr.getDeclaredTarget().getSelector().toString();
-        if (ResourceUtil.isActivity(act)
-                && "setContentView(I)V".equals(selector)) {
+        if (ResourceUtil.isActivity(act) && "setContentView(I)V".equals(selector)) {
             SymbolTable symTable = cgNode.getIR().getSymbolTable();
             // only int constant is handled now.
             if (symTable.isIntegerConstant(instr.getUse(1))) {
@@ -45,8 +40,7 @@ public class AnalysisUtil {
         }
     }
 
-    public static InterestingNodeType tryRecordInterestingNode(
-            SSAAbstractInvokeInstruction instr, TypingSubGraph sg) {
+    public static InterestingNodeType tryRecordInterestingNode(SSAAbstractInvokeInstruction instr, TypingSubGraph sg) {
         String sig = WalaUtil.getSignature(instr);
         String interestingIndices = AnalysisConfig.getPotentialSink(sig);
         latestInterestingNode = null;
@@ -57,8 +51,8 @@ public class AnalysisUtil {
             String sinkMethodName = instr.getDeclaredTarget().getName().toString();
             String sinkLocationClassName = sg.getCgNode().getMethod().getDeclaringClass().getName().toString();
             String sinkLocationMethodName = sg.getCgNode().getMethod().getName().toString();
-            logger.info("SINK: {}->{}() in [{}.{}()]",
-                    sinkClassName, sinkMethodName, sinkLocationClassName, sinkLocationMethodName);
+            logger.info("SINK: {}->{}() in [{}.{}()]", sinkClassName, sinkMethodName, sinkLocationClassName,
+                    sinkLocationMethodName);
             latestInterestingNode = node;
             return InterestingNodeType.SINK;
         }
@@ -126,14 +120,9 @@ public class AnalysisUtil {
                 writer.print(sensitiveTag);
                 writer.println();
             }
-        }
-
-        if (DUMP_VERBOSE) {
             printCollectedTexts(writer, codeTexts, constants);
         }
-        // dumpTextForPossibleGUI(sink, writer);
 
-        // dump paths
         printPaths(sink, textAnalysis, writer);
 
         writer.flush();
@@ -204,8 +193,7 @@ public class AnalysisUtil {
         writer.flush();
     }
 
-    public static void collectTextsForNode(TypingNode node,
-                                           TypingGraph graph, Map<String, List<Statement>> texts,
+    public static void collectTextsForNode(TypingNode node, TypingGraph graph, Map<String, List<Statement>> texts,
                                            Set<Integer> constants) {
         TypingRecord record = graph.getTypingRecord(node.getGraphNodeId());
         if (record == null) {
@@ -220,8 +208,7 @@ public class AnalysisUtil {
     }
 
     // Fields that across entrypoints
-    private static void collectTextsForFields(TypingNode node,
-                                              TypingGraph graph, Map<String, List<Statement>> texts,
+    private static void collectTextsForFields(TypingNode node, TypingGraph graph, Map<String, List<Statement>> texts,
                                               Set<Integer> constants) {
         TypingRecord record = graph.getTypingRecord(node.getGraphNodeId());
         if (record == null) {
@@ -230,23 +217,20 @@ public class AnalysisUtil {
         List<Statement> fieldPath = new LinkedList<>();
         Stack<TypingGraph> visited = new Stack<>();
         List<Object> worklist = new LinkedList<>();
-        collectTextsForFieldsHelper(graph, record, 0, visited, fieldPath, worklist,
-                texts, constants, true);
+        collectTextsForFieldsHelper(graph, record, 0, visited, fieldPath, worklist, texts, constants, true);
         visited.clear();
         worklist.clear();
-        collectTextsForFieldsHelper(graph, record, 0, visited, fieldPath, worklist,
-                texts, constants, false);
+        collectTextsForFieldsHelper(graph, record, 0, visited, fieldPath, worklist, texts, constants, false);
     }
 
-    private static void collectTextsForFieldsHelper(TypingGraph graph,
-                                                    TypingRecord record, int permLevel, Stack<TypingGraph> visited,
-                                                    List<Statement> fieldPath, List<Object> worklist,
-                                                    Map<String, List<Statement>> texts, Set<Integer> constants,
-                                                    boolean isBackward) {
+    private static void collectTextsForFieldsHelper(TypingGraph graph, TypingRecord record, int permLevel,
+                                                    Stack<TypingGraph> visited, List<Statement> fieldPath,
+                                                    List<Object> worklist, Map<String, List<Statement>> texts,
+                                                    Set<Integer> constants, boolean isBackward) {
         if (permLevel >= 2) {
             return;
         }
-        int worklistSize = worklist.size();
+        int previousWorklistSize = worklist.size();
         Map<SimpleGraphNode, List<Statement>> sources;
         if (isBackward) {
             sources = record.getInputFields();
@@ -254,116 +238,132 @@ public class AnalysisUtil {
             sources = record.getOutputFields();
         }
         visited.push(graph);
-        for (SimpleGraphNode sgn : sources.keySet()) {
-            TypingNode tn = graph.getNode(sgn.nodeId());
-            if (tn.isField()) {
-                List<Statement> tempPath = new LinkedList<>();
-                boolean startAdd = false, endAdd = false;
-                Statement connector = null;
-                String connectorSig = "";
-                if (!fieldPath.isEmpty()) {
-                    connector = fieldPath.getFirst();
-                    if (connector.getKind() == Statement.Kind.NORMAL) {
-                        NormalStatement nstmt = (NormalStatement) connector;
-                        SSAInstruction inst = nstmt.getInstruction();
-                        if (isBackward && inst instanceof SSAGetInstruction) {
-                            connectorSig = ((SSAGetInstruction) inst).getDeclaredField()
-                                    .getSignature();
-                        } else if (!isBackward
-                                && inst instanceof SSAPutInstruction) {
-                            connectorSig = ((SSAPutInstruction) inst).getDeclaredField()
-                                    .getSignature();
-                        }
-                    }
+        for (Map.Entry<SimpleGraphNode, List<Statement>> sgnPath : sources.entrySet()) {
+            TypingNode typingNode = graph.getNode(sgnPath.getKey().nodeId());
+            if (!typingNode.isField()) {
+                continue;
+            }
+            List<Statement> tempPath = buildTempPathForSgn(fieldPath, isBackward, sgnPath.getValue(), typingNode);
+            for (Map.Entry<Entrypoint, TypingGraph> entry : TypingGraphUtil.entry2Graph.entrySet()) {
+                // Entrypoint ep = entry.getKey();
+                TypingGraph typingGraph = entry.getValue();
+                if (visited.contains(typingGraph)) {
+                    continue;
                 }
-                List<Statement> sgnPath = sources.get(sgn);
-                if (sgnPath != null) {
-                    for (Statement p : sgnPath) {
-                        if (p.getKind() == Statement.Kind.NORMAL) {
-                            NormalStatement nstmt = (NormalStatement) p;
-                            SSAInstruction inst = nstmt.getInstruction();
-                            if (isBackward
-                                    && inst instanceof SSAGetInstruction
-                                    && tn.getFieldRef().getSignature()
-                                    .equals((((SSAGetInstruction) inst).getDeclaredField().getSignature()))) {
-                                startAdd = true;
-                            } else if (!isBackward
-                                    && inst instanceof SSAPutInstruction
-                                    && tn.getFieldRef().getSignature()
-                                    .equals((((SSAPutInstruction) inst).getDeclaredField().getSignature()))) {
-                                startAdd = true;
-                            }
-                        }
-                        if (startAdd) {
-                            tempPath.add(p);
-                            if (!fieldPath.isEmpty()
-                                    && p.getKind() == Statement.Kind.NORMAL) {
-                                NormalStatement nstmt = (NormalStatement) p;
-                                SSAInstruction inst = nstmt.getInstruction();
-                                if (!isBackward
-                                        && inst instanceof SSAGetInstruction
-                                        && connectorSig.equals(
-                                        (((SSAGetInstruction) inst).getDeclaredField().getSignature()))) {
-                                    endAdd = true;
-                                } else if (isBackward
-                                        && inst instanceof SSAPutInstruction
-                                        && connectorSig.equals(
-                                        (((SSAPutInstruction) inst).getDeclaredField().getSignature()))) {
-                                    endAdd = true;
-                                }
-                            }
-                            if (endAdd) {
-                                break;
-                            }
-                        }
-                    }
+                Set<TypingRecord> targets = buildTargets(isBackward, typingGraph, typingNode);
+                if (!targets.isEmpty()) {
+                    worklist.add(typingGraph);
+                    worklist.add(permLevel + 1);
+                    worklist.add(targets);
+                    worklist.add(tempPath);// record field path
                 }
-                if (endAdd) {
-                    tempPath.addAll(fieldPath);
-                } else if (!fieldPath.isEmpty()) {
-                    tempPath.clear();
-                }
-                String sig = tn.getFieldRef().getSignature();// System.err.println(sig);
-                Map<Entrypoint, TypingGraph> entry2Graph = TypingGraphUtil.entry2Graph;
-                Set<Map.Entry<Entrypoint, TypingGraph>> entrySet = entry2Graph.entrySet();
-                for (Map.Entry<Entrypoint, TypingGraph> entry : entrySet) {
-                    // Entrypoint ep = entry.getKey();
-                    TypingGraph g = entry.getValue();
-                    if (visited.contains(g)) {
-                        continue;
-                    }
-                    Set<TypingRecord> targets = new HashSet<>();
-                    Iterator<TypingNode> iter;
-                    if (isBackward) {
-                        iter = g.iterateAllOutgoingFields(sig);
-                    } else {
-                        iter = g.iterateAllIncomingFields(sig);
-                    }
-                    while (iter.hasNext()) {
-                        TypingNode d = iter.next();
-                        TypingRecord r = g.getTypingRecord(d.getGraphNodeId());
-                        if (r != null) {
-                            targets.add(r);
-                        }
-                    }
-                    if (!targets.isEmpty()) {
-                        worklist.add(g);
-                        worklist.add(permLevel + 1);
-                        worklist.add(targets);
-                        worklist.add(tempPath);// record field path
+            }
+        }
+        dumpTextForFieldsViaWorklist(visited, worklist, previousWorklistSize, texts, constants, isBackward);
+        visited.pop();
+    }
+
+    private static Set<TypingRecord> buildTargets(boolean isBackward, TypingGraph typingGraph, TypingNode typingNode) {
+        String sig = typingNode.getFieldRef().getSignature();// System.err.println(sig);
+        Set<TypingRecord> targets = new HashSet<>();
+        Iterator<TypingNode> fieldIterator;
+        if (isBackward) {
+            fieldIterator = typingGraph.iterateAllOutgoingFields(sig);
+        } else {
+            fieldIterator = typingGraph.iterateAllIncomingFields(sig);
+        }
+        while (fieldIterator.hasNext()) {
+            TypingNode field = fieldIterator.next();
+            TypingRecord fieldRecord = typingGraph.getTypingRecord(field.getGraphNodeId());
+            if (fieldRecord != null) {
+                targets.add(fieldRecord);
+            }
+        }
+        return targets;
+    }
+
+    private static List<Statement> buildTempPathForSgn(List<Statement> fieldPath, boolean isBackward,
+                                                       List<Statement> sgnPath,
+                                                       TypingNode typingNode) {
+        List<Statement> tempPath = new LinkedList<>();
+        String connectorSig = "";
+        boolean fieldPathHasElements = !fieldPath.isEmpty();
+        if (fieldPathHasElements) {
+            Statement connector = fieldPath.getFirst();
+            connectorSig = getConnectorSignature(isBackward, connector);
+        }
+        boolean endAdding = false;
+        if (sgnPath != null) {
+            boolean addElements = false;
+            for (Statement sgnPathElement : sgnPath) {
+                addElements |= startAddingPathElements(isBackward, sgnPathElement, typingNode);
+                if (addElements) {
+                    tempPath.add(sgnPathElement);
+                    endAdding = endAddingPathElements(fieldPathHasElements, isBackward, sgnPathElement, connectorSig);
+                    if (endAdding) {
+                        tempPath.addAll(fieldPath);
+                        break;
                     }
                 }
             }
         }
-        dumpTextForFieldsViaWorklist(visited, worklist, worklistSize, texts,
-                constants, isBackward);
-        visited.pop();
+        if (fieldPathHasElements && !endAdding) {
+            tempPath.clear();
+        }
+        return tempPath;
     }
 
-    private static void dumpTextForFieldsViaWorklist(
-            Stack<TypingGraph> visited, List<Object> worklist, int initSize,
-            Map<String, List<Statement>> texts, Set<Integer> constants,
-            boolean isBackward) {
+    private static boolean endAddingPathElements(boolean fieldPathHasElements, boolean isBackward,
+                                                 Statement sgnPathElement,
+                                                 String connectorSig) {
+        if (fieldPathHasElements) {
+            if (sgnPathElement instanceof NormalStatement nstmt) {
+                SSAInstruction inst = nstmt.getInstruction();
+                if (!isBackward && inst instanceof SSAGetInstruction getInstruction &&
+                        connectorSig.equals(getInstruction.getDeclaredField().getSignature())) {
+                    return true;
+                } else if (isBackward && inst instanceof SSAPutInstruction putInstruction &&
+                        connectorSig.equals(putInstruction.getDeclaredField().getSignature())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean startAddingPathElements(boolean isBackward, Statement pathElement, TypingNode typingNode) {
+        if (pathElement instanceof NormalStatement nstmt) {
+            SSAInstruction inst = nstmt.getInstruction();
+            if (isBackward && inst instanceof SSAGetInstruction getInstruction && typingNode.getFieldRef()
+                    .getSignature()
+                    .equals(getInstruction.getDeclaredField().getSignature())) {
+                return true;
+            } else if (!isBackward && inst instanceof SSAPutInstruction putInstruction &&
+                    typingNode.getFieldRef()
+                            .getSignature()
+                            .equals(putInstruction.getDeclaredField().getSignature())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String getConnectorSignature(boolean isBackward, Statement connector) {
+        String connectorSig = "";
+        if (connector instanceof NormalStatement nstmt) {
+            SSAInstruction inst = nstmt.getInstruction();
+            if (isBackward && inst instanceof SSAGetInstruction getInstruction) {
+                connectorSig = getInstruction.getDeclaredField().getSignature();
+            } else if (!isBackward && inst instanceof SSAPutInstruction putInstruction) {
+                connectorSig = putInstruction.getDeclaredField().getSignature();
+            }
+        }
+        return connectorSig;
+    }
+
+    private static void dumpTextForFieldsViaWorklist(Stack<TypingGraph> visited, List<Object> worklist, int initSize,
+                                                     Map<String, List<Statement>> texts, Set<Integer> constants,
+                                                     boolean isBackward) {
         while (worklist.size() > initSize) {
             TypingGraph graph = (TypingGraph) worklist.remove(initSize);
             int permLevel = (Integer) worklist.remove(initSize);
@@ -384,34 +384,18 @@ public class AnalysisUtil {
                     }
                     List<Statement> tempPath = new LinkedList<>();
                     Statement connector = fs.getFirst();
-                    String connectorSig = "";
-                    if (connector.getKind() == Statement.Kind.NORMAL) {
-                        NormalStatement nstmt = (NormalStatement) connector;
-                        SSAInstruction inst = nstmt.getInstruction();
-                        if (isBackward && inst instanceof SSAGetInstruction) {
-                            connectorSig = ((SSAGetInstruction) inst).getDeclaredField()
-                                    .getSignature();
-                        } else if (!isBackward
-                                && inst instanceof SSAPutInstruction) {
-                            connectorSig = ((SSAPutInstruction) inst).getDeclaredField()
-                                    .getSignature();
-                        }
-                    }
+                    String connectorSig = getConnectorSignature(isBackward, connector);
                     boolean endAdd = false;
                     for (Statement p : path) {
                         tempPath.add(p);
-                        if (p.getKind() == Statement.Kind.NORMAL) {
-                            NormalStatement nstmt = (NormalStatement) p;
+                        if (p instanceof NormalStatement nstmt) {
                             SSAInstruction inst = nstmt.getInstruction();
-                            if (!isBackward
-                                    && inst instanceof SSAGetInstruction
-                                    && connectorSig.equals(
-                                    (((SSAGetInstruction) inst).getDeclaredField().getSignature()))) {
+                            if (!isBackward && inst instanceof SSAGetInstruction getInstruction && connectorSig.equals(
+                                    getInstruction.getDeclaredField().getSignature())) {
                                 endAdd = true;
-                            } else if (isBackward
-                                    && inst instanceof SSAPutInstruction
-                                    && connectorSig.equals(
-                                    (((SSAPutInstruction) inst).getDeclaredField().getSignature()))) {
+                            } else if (isBackward && inst instanceof SSAPutInstruction putInstruction &&
+                                    connectorSig.equals(
+                                            putInstruction.getDeclaredField().getSignature())) {
                                 endAdd = true;
                             }
                         }
@@ -430,56 +414,11 @@ public class AnalysisUtil {
                         constants.add((Integer) c);
                     }
                 }
-                collectTextsForFieldsHelper(graph, rec, permLevel + 1, visited, fs,
-                        worklist, texts, constants, isBackward);
+                collectTextsForFieldsHelper(graph, rec, permLevel + 1, visited, fs, worklist, texts, constants,
+                        isBackward);
             }
         }
     }
 
-    // currently only for the GUI that triggers the sink operation
-    private static void dumpTextForPossibleGUI(InterestingNode sink,
-                                               Map<String, List<Statement>> texts) {
-        String epClass = sink.enclosingTypingGraph().getEntrypoint().getMethod()
-                .getDeclaringClass()
-                .getName()
-                .toString();
-        Integer layoutId = activity2Layout.get(epClass);
-        if (layoutId != null) {
-            String text = ResourceUtil.getLayoutText(layoutId);
-            if (text != null) {
-                try {
-                    BufferedReader reader = new BufferedReader(
-                            new StringReader(text));
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        // writer.print(" + ");
-                        // writer.print(line);
-                        // writer.println();
-                        texts.put(line, null);
-                    }
-                } catch (IOException ignored) {
 
-                }
-            }
-        }
-    }
-
-    static class IdCountPair implements Comparable<IdCountPair> {
-        Integer id;
-        int count;
-
-        IdCountPair(Integer id) {
-            this.id = id;
-            count = 1;
-        }
-
-        void increment() {
-            count++;
-        }
-
-        @Override
-        public int compareTo(IdCountPair that) {
-            return this.count - that.count;
-        }
-    }
 }

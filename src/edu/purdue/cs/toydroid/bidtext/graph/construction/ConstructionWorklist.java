@@ -6,7 +6,7 @@ import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
 
 import java.util.*;
 
-public class Worklist implements Iterable<Worklist.Item> {
+public class ConstructionWorklist implements Iterable<ConstructionWorklist.Item> {
 
     private final List<Item> delegate;
 
@@ -15,7 +15,7 @@ public class Worklist implements Iterable<Worklist.Item> {
     private final Map<MethodReference, ParamCaller> calleesOfMethodInvocations;
     private final Map<MethodReference, NormalStatement> calleesOfReturns;
 
-    public Worklist() {
+    public ConstructionWorklist() {
         delegate = new LinkedList<>();
         calleesOfMethodInvocations = new HashMap<>();
         calleesOfReturns = new HashMap<>();
