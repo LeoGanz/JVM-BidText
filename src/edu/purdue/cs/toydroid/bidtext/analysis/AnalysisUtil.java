@@ -215,14 +215,9 @@ public class AnalysisUtil {
         if (record == null) {
             return;
         }
-        List<Statement> fieldPath = new LinkedList<>();
-        Stack<TypingGraph> visited = new Stack<>();
-        List<Object> worklist = new LinkedList<>();
-        collectTextsForFieldsHelper(graph, record, 0, visited, fieldPath, worklist, texts, constants, true);
-        visited.clear();
-        worklist.clear();
-        collectTextsForFieldsHelper(graph, record, 0, visited, fieldPath, worklist, texts, constants, false);
+        TextForFieldsCollector collector = new TextForFieldsCollector(graph, record, texts, constants);
+        collector.collect(true);
+        collector.collect(false);
     }
-
 
 }
