@@ -85,6 +85,7 @@ public class InvocationHandler {
         }
 
         if (instruction.hasDef()) {
+            System.out.println("Instruction has def: " + instruction.getDef());
             returnValueNode = subGraph.findOrCreate(instruction.getDef());
             returnValueRecord = typingGraph.findOrCreateTypingRecord(returnValueNode.getGraphNodeId());
         }
@@ -223,7 +224,7 @@ public class InvocationHandler {
             if (apiType != InterestingNodeType.SINK) {
                 if (thisRecord != null /* && !skipThis*/) {
                     buildConstraint(thisNode, thisRecord, pNode, pRec, apiConstraint, true);
-                } else if (returnValueRecord != null) {
+                } else if (returnValueRecord != null) { // TODO remove "else" ?
                     buildConstraint(returnValueNode, returnValueRecord, pNode, pRec, apiConstraint, true);
                 }
             }

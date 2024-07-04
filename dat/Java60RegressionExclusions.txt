@@ -12,3 +12,4 @@ org\/apache\/xerces\/.*
 javax\/.*
 java\/io\/.*
 java\/util\/.*
+jdk\/internal\/.*

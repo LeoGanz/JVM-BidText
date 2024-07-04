@@ -53,27 +53,48 @@ public class TypingGraphUtil {
         currentTypingGraph = graph;
         logger.info("   - Visit SDG ");
         Map<Statement, SimpleCounter> visitedStatementCount = new HashMap<>();
-        // int idx = 0;
+        int idx = 0;
         for (Statement stmt : sdg) {
-            // logger.info("    + SDG stmt: {} ## {}", idx, stmt.toString());
-            // if (idx == 5004) {
-            // final Set<Statement> left = new HashSet<Statement>();
-            // find(sdg, stmt, left);
-            // logger.debug("   LEFT size = {}", left.size());
-            // Graph<Statement> g = pruneSDG(sdg, left);
-            // try {
-            // DotUtil.dotify(g, WalaUtil.makeNodeDecorator(), "5004.dot",
-            // null, null);
-            // } catch (WalaException e) {
-            // e.printStackTrace();
-            // }
-            // }
-            // idx++;
+            if (stmt.getNode()
+                    .getMethod()
+                    .getDeclaringClass()
+                    .getClassLoader()
+                    .getName()
+                    .toString()
+                    .equals("Application")) {
+                logger.debug("    + SDG stmt: {} ## {}", idx, stmt.toString());
+
+//                final Set<Statement> left = new HashSet<>();
+//                find(sdg, stmt, left);
+//                logger.debug("   LEFT size = {}", left.size());
+////                Graph<Statement> g = pruneSDG(sdg, left);
+//                try {
+//                    DotUtil.dotify(sdg, WalaUtil.makeNodeDecorator(), "5004.dot",
+//                            null, null);
+//                } catch (WalaException e) {
+//                    e.printStackTrace();
+//                }
+            }
+            idx++;
             buildTypingGraphForStmt(cg, sdg, stmt, visitedStatementCount);
             if (TextLeak.taskTimeout) {
                 break;
             }
         }
+
+        logger.debug("\nGRAPH NODE TYPING");
+        currentTypingGraph.node2Typing.forEach((simpleGraphNode, record) -> {
+            logger.debug("  - {} : {}", currentTypingGraph.getNode(simpleGraphNode.nodeId()), record);
+        });
+
+        logger.debug("\n\nSUBGRAPHS");
+        currentTypingGraph.subGraphs.forEach((cgNode, subgraph) -> {
+            logger.debug("  - SG {} (GraphNodeId {})", cgNode, cgNode.getGraphNodeId());
+            subgraph.value2Nodes.forEach((val, node) -> {
+                logger.debug("        - {} : {} --- {}", val, node,
+                        currentTypingGraph.getTypingRecord(node.getGraphNodeId()));
+            });
+        });
 
 
         visitedStatementCount.clear();
@@ -131,6 +152,10 @@ public class TypingGraphUtil {
         Statement stmt = item.statement();
         TypingNode cachedNode = item.cachedNode().orElse(null);
         Kind kind = stmt.getKind();
+        if (kind != Kind.HEAP_PARAM_CALLEE && kind != Kind.HEAP_PARAM_CALLER && kind != Kind.HEAP_RET_CALLEE &&
+                kind != Kind.HEAP_RET_CALLER) {
+            logger.debug("      - Handle stmt: {}", stmt.toString());
+        }
         return switch (kind) {
             case PHI -> handlePhi((PhiStatement) stmt);
             case NORMAL -> handleNormal((NormalStatement) stmt, cachedNode, worklist);
@@ -433,6 +458,7 @@ public class TypingGraphUtil {
 
     private static void handleSSANew(SSANewInstruction inst, TypingSubGraph sg) {
         int def = inst.getDef();
+        System.out.println("SSANew def: " + def);
         TypingNode defNode = sg.findOrCreate(def);
         defNode.joke();
     }

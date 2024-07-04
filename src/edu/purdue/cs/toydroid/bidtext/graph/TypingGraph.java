@@ -13,12 +13,12 @@ public class TypingGraph {
     private static Logger logger = LogManager.getLogger(TypingGraph.class);
 
     private Entrypoint entrypoint;
-    private Map<CGNode, TypingSubGraph> subGraphs;
+    public Map<CGNode, TypingSubGraph> subGraphs;
     private Set<Integer> possibleExternalInput;
     private Map<String, Set<TypingNode>> fieldIncoming; // possible incoming fields
     private Map<String, Set<TypingNode>> fieldOutgoing; // possible outgoing fields
     private final DelegatingNumberedNodeManager<TypingNode> nodeManager;
-    private final Map<SimpleGraphNode, TypingRecord> node2Typing;
+    public final Map<SimpleGraphNode, TypingRecord> node2Typing;
 
     public TypingGraph(Entrypoint e) {
         entrypoint = e;

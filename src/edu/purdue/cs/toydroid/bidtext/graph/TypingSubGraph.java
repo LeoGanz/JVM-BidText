@@ -5,6 +5,8 @@ import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SymbolTable;
 import com.ibm.wala.types.FieldReference;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,11 +15,12 @@ import java.util.Set;
 
 public class TypingSubGraph {
 
+    private static Logger logger = LogManager.getLogger(TypingSubGraph.class);
     private final CGNode cgNode;
     private final TypingGraph typingGraph;
     private int fakeValue;
     private final Set<TypingNode> stringConstantNodes;
-    private final Map<Integer, TypingNode> value2Nodes;
+    public final Map<Integer, TypingNode> value2Nodes;
     private final SymbolTable symTable;
     private Set<SSAAbstractInvokeInstruction> potentialGlobalConstStringLoc;
 
@@ -54,6 +57,7 @@ public class TypingSubGraph {
     public TypingNode findOrCreate(int v) {
         TypingNode node = value2Nodes.get(v);
         if (node == null) {
+            System.out.println("Creating node for value " + v);
             node = new TypingNode(getCgNode(), v);
             value2Nodes.put(v, node);
             getTypingGraph().addNode(node);

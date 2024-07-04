@@ -1,9 +1,7 @@
 package edu.purdue.cs.toydroid.bidtext.analysis;
 
-import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
-import com.ibm.wala.ssa.SymbolTable;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingRecord;
@@ -24,22 +22,8 @@ public class AnalysisUtil {
 
     private static final Set<InterestingNode> sinks = new HashSet<>();
 
-    private static final Map<String, Integer> activity2Layout = new HashMap<>();
     public static boolean DUMP_VERBOSE = true;
     private static InterestingNode latestInterestingNode = null;
-
-    public static void associateLayout2Activity(SSAAbstractInvokeInstruction instr, CGNode cgNode) {
-        String act = instr.getDeclaredTarget().getDeclaringClass().getName().toString();
-        String selector = instr.getDeclaredTarget().getSelector().toString();
-        if (ResourceUtil.isActivity(act) && "setContentView(I)V".equals(selector)) {
-            SymbolTable symTable = cgNode.getIR().getSymbolTable();
-            // only int constant is handled now.
-            if (symTable.isIntegerConstant(instr.getUse(1))) {
-                int layoutId = symTable.getIntValue(instr.getUse(1));
-                activity2Layout.put(act, layoutId);
-            }
-        }
-    }
 
     public static InterestingNodeType tryRecordInterestingNode(SSAAbstractInvokeInstruction instr, TypingSubGraph sg) {
         String sig = WalaUtil.getSignature(instr);
@@ -52,7 +36,7 @@ public class AnalysisUtil {
             String sinkMethodName = instr.getDeclaredTarget().getName().toString();
             String sinkLocationClassName = sg.getCgNode().getMethod().getDeclaringClass().getName().toString();
             String sinkLocationMethodName = sg.getCgNode().getMethod().getName().toString();
-            logger.info("SINK: {}->{}() in [{}.{}()]", sinkClassName, sinkMethodName, sinkLocationClassName,
+            logger.info("        SINK: {}->{}() in [{}.{}()]", sinkClassName, sinkMethodName, sinkLocationClassName,
                     sinkLocationMethodName);
             latestInterestingNode = node;
             return InterestingNodeType.SINK;
@@ -109,9 +93,12 @@ public class AnalysisUtil {
             collectTextsForNode(gNode, graph, codeTexts, constants);
             collectTextsForFields(gNode, graph, codeTexts, constants);
         }
-
+        System.out.println("codeTexts: " + codeTexts);
+        System.out.println("constants: " + constants);
         TextAnalysis textAnalysis = new TextAnalysis();
         String sensitiveTag = textAnalysis.analyze(codeTexts, false);
+        System.out.println("sensitiveTag: " + sensitiveTag);
+        System.out.println("text2Path: " + textAnalysis.getText2Path());
 
 
         if (DUMP_VERBOSE) {
@@ -131,7 +118,7 @@ public class AnalysisUtil {
 
         if (resultFile.exists() && resultFile.length() <= fileLengthAfterWritingHeader + 10) {
             logger.debug("No information found for sink. Deleting log file.");
-            resultFile.delete();
+//            resultFile.delete();
         }
     }
 

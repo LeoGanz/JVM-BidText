@@ -93,9 +93,9 @@ public class TypingNode extends NodeWithNumber {
     public String toString() {
         StringBuilder builder = new StringBuilder("[ID: ");
         builder.append(getGraphNodeId());
-        builder.append("]\n<");
+        builder.append("] <");
         builder.append(cgNode.getMethod().getSignature());
-        builder.append(">\n");
+        builder.append(">");
         builder.append("v");
         builder.append(value);
         if (isField()) {

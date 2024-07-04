@@ -357,4 +357,12 @@ public class TypingRecord {
         return initialId;
     }
 
+    @Override
+    public String toString() {
+        return "TypingRecord{" +
+                "typingTexts=" + typingTexts.keySet() +
+                ", forwardConstraints=" + forwardConstraints +
+                ", backwardConstraints=" + backwardConstraints +
+                '}';
+    }
 }
