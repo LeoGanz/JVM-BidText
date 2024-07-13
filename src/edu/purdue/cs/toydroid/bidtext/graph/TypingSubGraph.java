@@ -68,6 +68,7 @@ public class TypingSubGraph {
                 node.markConstantKind();
             }
         }
+        typingGraph.findOrCreateTypingRecord(node.getGraphNodeId()); // not originally in the code
         return node;
     }
 

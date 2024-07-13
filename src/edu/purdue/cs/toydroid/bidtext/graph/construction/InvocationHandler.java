@@ -15,6 +15,7 @@ import edu.purdue.cs.toydroid.utils.WalaUtil;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public class InvocationHandler {
 
@@ -35,8 +36,6 @@ public class InvocationHandler {
     private List<TypingNode> constantNodes;
     private TypingNode returnValueNode;
     private TypingNode thisNode;
-    private TypingRecord returnValueRecord;
-    private TypingRecord thisRecord;
 
     public InvocationHandler(TypingGraph typingGraph, TypingSubGraph subGraph, CGNode cgNode, Statement statement,
                              SSAAbstractInvokeInstruction instruction) {
@@ -87,11 +86,9 @@ public class InvocationHandler {
         if (instruction.hasDef()) {
             System.out.println("Instruction has def: " + instruction.getDef());
             returnValueNode = subGraph.findOrCreate(instruction.getDef());
-            returnValueRecord = typingGraph.findOrCreateTypingRecord(returnValueNode.getGraphNodeId());
         }
         if (!instruction.isStatic()) {
             thisNode = subGraph.findOrCreate(instruction.getReceiver());
-            thisRecord = typingGraph.findOrCreateTypingRecord(thisNode.getGraphNodeId());
             // possibly mark for skipping depending on the class name of inst.getDeclaredTarget().getDeclaringClass()
         }
     }
@@ -115,7 +112,8 @@ public class InvocationHandler {
     }
 
     private void handleStringBuilderAppend(TypingNode paramNode) {
-        TypingRecord paramRec = typingGraph.findOrCreateTypingRecord(paramNode.getGraphNodeId());
+        TypingRecord thisRecord = typingGraph.findOrCreateTypingRecord(thisNode.getGraphNodeId());
+        TypingRecord returnValueRecord = typingGraph.findOrCreateTypingRecord(returnValueNode.getGraphNodeId());
         if (paramNode.isConstant()) {
             String str;
             if (paramNode.isString()) {
@@ -127,75 +125,54 @@ public class InvocationHandler {
         } else {
             thisRecord.addTypingAppend(paramNode.getGraphNodeId());
         }
-        buildConstraint(thisNode, thisRecord, paramNode, paramRec, TypingConstraint.GE_APPEND, true, false);
+        buildConstraint(thisNode, paramNode, TypingConstraint.GE_APPEND, true, false);
         if (returnValueRecord != null) {
             returnValueRecord.addTypingAppend(thisRecord);
-            buildConstraint(returnValueNode, returnValueRecord, paramNode, paramRec, TypingConstraint.GE_APPEND, true);
-            buildConstraint(returnValueNode, returnValueRecord, thisNode, thisRecord, TypingConstraint.GE_APPEND, true);
+            buildConstraint(returnValueNode, paramNode, TypingConstraint.GE_APPEND, true);
+            buildConstraint(returnValueNode, thisNode, TypingConstraint.GE_APPEND, true);
         }
     }
 
     private void handleStringBuilderToString() {
-        if (returnValueRecord != null) {
-            buildConstraint(returnValueNode, returnValueRecord, thisNode, thisRecord, TypingConstraint.EQ, true);
+        if (returnValueNode != null) {
+            buildConstraint(returnValueNode, thisNode, TypingConstraint.EQ, true);
         }
     }
 
 
     private boolean matchesPropagationRule() {
         String sig = WalaUtil.getSignature(instruction);
-        String apiRule = APIPropagationRules.getRule(sig);
-        return apiRule != null;
+        Set<APIPropagationRules.Rule> apiRules = APIPropagationRules.getRules(sig);
+        return !apiRules.isEmpty();
     }
 
     private void handleAPIByRule() {
-        // TODO: refactor
         String sig = WalaUtil.getSignature(instruction);
-        String concatenatedRules = APIPropagationRules.getRule(sig);
-        String[] rules = concatenatedRules.split(",");
-        int[] ruleRep = new int[3];
-        TypingNode leftNode = null, rightNode = null;
-        TypingRecord leftRec = null, rightRec = null;
-        for (String s : rules) {
-            String R = s.trim();
-            ruleRep[1] = APIPropagationRules.NOTHING;
-            APIPropagationRules.parseRule(R, ruleRep);
-            if (ruleRep[1] == APIPropagationRules.NOTHING) {
-                continue;
-            }
-            int leftIdx = ruleRep[0];
-            int rightIdx = ruleRep[2];
-            int op = ruleRep[1];
-            if (leftIdx == -1) {
-                leftNode = returnValueNode;
-                leftRec = returnValueRecord;
-            } else if (leftIdx < instruction.getNumberOfUses()) {
-                int use = instruction.getUse(leftIdx);
-                leftNode = subGraph.find(use);
-                if (leftNode != null) {
-                    leftRec = typingGraph.findOrCreateTypingRecord(leftNode.getGraphNodeId());
-                }
-            }
-            if (rightIdx == -1) {
-                rightNode = returnValueNode;
-                rightRec = returnValueRecord;
-            } else if (rightIdx < instruction.getNumberOfUses()) {
-                int use = instruction.getUse(rightIdx);
-                rightNode = subGraph.find(use);
-                if (rightNode != null) {
-                    rightRec = typingGraph.findOrCreateTypingRecord(rightNode.getGraphNodeId());
-                }
-            }
-            if (leftRec != null && rightRec != null) {
-                if (op == APIPropagationRules.LEFT_PROP) {
-                    buildConstraint(leftNode, leftRec, rightNode, rightRec, TypingConstraint.GE, false);
-                } else if (op == APIPropagationRules.RIGHT_PROP) {
-                    buildConstraint(rightNode, rightRec, leftNode, leftRec, TypingConstraint.GE, false);
-                } else { // dual propagation
-                    buildConstraint(leftNode, leftRec, rightNode, rightRec, TypingConstraint.GE, true);
+        Set<APIPropagationRules.Rule> rules = APIPropagationRules.getRules(sig);
+        for (APIPropagationRules.Rule rule : rules) {
+            TypingNode leftNode = getTypingNodeForRuleValue(rule.left());
+            TypingNode rightNode = getTypingNodeForRuleValue(rule.right());
+
+            switch (rule.operator()) {
+                case LEFT_PROP -> buildConstraint(leftNode, rightNode, TypingConstraint.GE, false);
+                case RIGHT_PROP -> buildConstraint(rightNode, leftNode, TypingConstraint.GE, false);
+                case DUAL_PROP -> buildConstraint(leftNode, rightNode, TypingConstraint.GE, true);
+                case NO_PROP -> {
                 }
             }
         }
+    }
+
+    private TypingNode getTypingNodeForRuleValue(APIPropagationRules.Rule.ValueIndex ruleValueIndex) {
+        if (ruleValueIndex.isReturnValue()) {
+            return returnValueNode;
+        }
+        if (ruleValueIndex.index() >= instruction.getNumberOfUses()) {
+            throw new IllegalArgumentException("Rule index out of bounds. RuleValue was " + ruleValueIndex.index() +
+                    " but instruction has only " + instruction.getNumberOfUses() + " uses.");
+        }
+        int paramValue = instruction.getUse(ruleValueIndex.index());
+        return subGraph.find(paramValue);
     }
 
     private boolean matchesSourceCorrelationRule() {
@@ -210,38 +187,35 @@ public class InvocationHandler {
         TypingNode fakeNode = subGraph.createFakeConstantNode();
         TypingRecord fakeRec = typingGraph.findOrCreateTypingRecord(fakeNode.getGraphNodeId());
         fakeRec.addTypingText(rule);
-        buildConstraint(returnValueNode, returnValueRecord, fakeNode, fakeRec, TypingConstraint.GE_UNIDIR, false);
+        buildConstraint(returnValueNode, fakeNode, TypingConstraint.GE_UNIDIR, false);
     }
 
     private void handleGenericInvocation() {
         int apiConstraint = determineTypingConstraint();
         for (TypingNode pNode : freeNodes) {
-            TypingRecord pRec = typingGraph.findOrCreateTypingRecord(pNode.getGraphNodeId());
             for (TypingNode cNode : constantNodes) {
-                TypingRecord cRec = typingGraph.findOrCreateTypingRecord(cNode.getGraphNodeId());
-                buildConstraint(pNode, pRec, cNode, cRec, TypingConstraint.GE, false);
+                buildConstraint(pNode, cNode, TypingConstraint.GE, false);
             }
             if (apiType != InterestingNodeType.SINK) {
-                if (thisRecord != null /* && !skipThis*/) {
-                    buildConstraint(thisNode, thisRecord, pNode, pRec, apiConstraint, true);
-                } else if (returnValueRecord != null) { // TODO remove "else" ?
-                    buildConstraint(returnValueNode, returnValueRecord, pNode, pRec, apiConstraint, true);
+                if (thisNode != null /* && !skipThis*/) {
+                    buildConstraint(thisNode, pNode, apiConstraint, true);
+                } else if (returnValueNode != null) { // TODO remove "else" ?
+                    buildConstraint(returnValueNode, pNode, apiConstraint, true);
                 }
             }
         }
         if (freeNodes.isEmpty() && apiType != InterestingNodeType.SINK) {
             for (TypingNode cNode : constantNodes) {
-                TypingRecord cRec = typingGraph.findOrCreateTypingRecord(cNode.getGraphNodeId());
-                if (thisRecord != null /* && !skipThis*/) {
-                    buildConstraint(thisNode, thisRecord, cNode, cRec, TypingConstraint.GE, false);
-                } else if (returnValueRecord != null) {
+                if (thisNode != null /* && !skipThis*/) {
+                    buildConstraint(thisNode, cNode, TypingConstraint.GE, false);
+                } else if (returnValueNode != null) {
                     // backward constraint was in commented out code
-                    buildConstraint(returnValueNode, returnValueRecord, cNode, cRec, TypingConstraint.GE, false);
+                    buildConstraint(returnValueNode, cNode, TypingConstraint.GE, false);
                 }
             }
         }
-        if (thisRecord != null /*&& !skipThis*/ && returnValueRecord != null && apiType != InterestingNodeType.SINK) {
-            buildConstraint(returnValueNode, returnValueRecord, thisNode, thisRecord, apiConstraint, true);
+        if (thisNode != null /*&& !skipThis*/ && returnValueNode != null && apiType != InterestingNodeType.SINK) {
+            buildConstraint(returnValueNode, thisNode, apiConstraint, true);
             // backward constraint had the following commented out condition
             // if (apiConstraint != TypingConstraint.GE_UNIDIR)
         }
@@ -257,21 +231,28 @@ public class InvocationHandler {
         }
     }
 
-    private void buildConstraint(TypingNode leftNode, TypingRecord leftRecord, TypingNode rightNode,
-                                 TypingRecord rightRecord, int constraintType, boolean addBackwardConstraint) {
-        buildConstraint(leftNode, leftRecord, rightNode, rightRecord, constraintType, addBackwardConstraint, true);
+    private void buildConstraint(TypingNode leftNode, TypingNode rightNode,
+                                 int constraintType, boolean addBackwardConstraint) {
+        buildConstraint(leftNode, rightNode, constraintType, addBackwardConstraint, true);
     }
 
-    private void buildConstraint(TypingNode leftNode, TypingRecord leftRecord, TypingNode rightNode,
-                                 TypingRecord rightRecord, int constraintType, boolean addBackwardConstraint,
+    private void buildConstraint(TypingNode leftNode, TypingNode rightNode,
+                                 int constraintType, boolean addBackwardConstraint,
                                  boolean setPath) {
+        if (leftNode == null || rightNode == null) {
+            return;
+        }
+
         TypingConstraint constraint =
                 new TypingConstraint(leftNode.getGraphNodeId(), constraintType, rightNode.getGraphNodeId());
         if (setPath) {
             constraint.addPath(statement);
         }
+
+        TypingRecord rightRecord = typingGraph.findOrCreateTypingRecord(rightNode.getGraphNodeId());
         rightRecord.addForwardTypingConstraint(constraint);
         if (addBackwardConstraint) {
+            TypingRecord leftRecord = typingGraph.findOrCreateTypingRecord(leftNode.getGraphNodeId());
             leftRecord.addBackwardTypingConstraint(constraint);
         }
     }
