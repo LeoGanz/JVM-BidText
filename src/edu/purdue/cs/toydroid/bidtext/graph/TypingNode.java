@@ -17,8 +17,8 @@ public class TypingNode extends NodeWithNumber {
     private boolean isSpecial = false;
 
     private int kind;
-    private CGNode cgNode; // the enclosing CGNode
-    private int value; // value number of variable. for fieldRef, a "fake"
+    private final CGNode cgNode; // the enclosing CGNode
+    private final int value; // value number of variable. for fieldRef, a "fake"
     // value number is assigned for easy access in map
     private int obj; // obj value in instance field
     private FieldReference fieldRef;

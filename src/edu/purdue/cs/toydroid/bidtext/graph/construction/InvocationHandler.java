@@ -11,6 +11,8 @@ import edu.purdue.cs.toydroid.bidtext.analysis.InterestingNode;
 import edu.purdue.cs.toydroid.bidtext.analysis.InterestingNodeType;
 import edu.purdue.cs.toydroid.bidtext.graph.*;
 import edu.purdue.cs.toydroid.utils.WalaUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 
 public class InvocationHandler {
+    private static final Logger logger = LogManager.getLogger(InvocationHandler.class);
 
     private static final List<String> namesOfMethodsRequiringUnidirectionalPropagation = new ArrayList<>() {{
         add("getInputStream");
@@ -73,8 +76,10 @@ public class InvocationHandler {
         constantNodes = new ArrayList<>();
         // non-static methods have an implicit "this" parameter as the first parameter
         int offsetInUses = instruction.isStatic() ? 0 : 1;
+        StringBuilder debugInfo = new StringBuilder("          Instruction values - uses:");
         for (int i = offsetInUses; i < instruction.getNumberOfPositionalParameters(); i++) {
             int use = instruction.getUse(i);
+            debugInfo.append(" ").append(use);
             TypingNode node = subGraph.findOrCreate(use);
             if (node.isConstant()) {
                 constantNodes.add(node);
@@ -84,13 +89,15 @@ public class InvocationHandler {
         }
 
         if (instruction.hasDef()) {
-            System.out.println("Instruction has def: " + instruction.getDef());
+            debugInfo.append(", defines (returns): ").append(instruction.getDef());
             returnValueNode = subGraph.findOrCreate(instruction.getDef());
         }
         if (!instruction.isStatic()) {
+            debugInfo.append(", this reference: ").append(instruction.getReceiver());
             thisNode = subGraph.findOrCreate(instruction.getReceiver());
             // possibly mark for skipping depending on the class name of inst.getDeclaredTarget().getDeclaringClass()
         }
+        logger.debug(debugInfo.toString());
     }
 
     private boolean isStringBuilderInvocation() {

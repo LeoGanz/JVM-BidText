@@ -15,7 +15,7 @@ import java.util.Set;
 
 public class TypingSubGraph {
 
-    private static Logger logger = LogManager.getLogger(TypingSubGraph.class);
+    private static final Logger logger = LogManager.getLogger(TypingSubGraph.class);
     private final CGNode cgNode;
     private final TypingGraph typingGraph;
     private int fakeValue;
@@ -57,7 +57,6 @@ public class TypingSubGraph {
     public TypingNode findOrCreate(int v) {
         TypingNode node = value2Nodes.get(v);
         if (node == null) {
-            System.out.println("Creating node for value " + v);
             node = new TypingNode(getCgNode(), v);
             value2Nodes.put(v, node);
             getTypingGraph().addNode(node);
@@ -67,8 +66,8 @@ public class TypingSubGraph {
             } else if (symTable.isConstant(v)) {
                 node.markConstantKind();
             }
+            logger.debug("          Created regular typing node: {}", node);
         }
-        typingGraph.findOrCreateTypingRecord(node.getGraphNodeId()); // not originally in the code
         return node;
     }
 
@@ -77,6 +76,7 @@ public class TypingSubGraph {
         TypingNode node = new TypingNode(getCgNode(), fv, v, f);
         value2Nodes.put(fv, node);
         getTypingGraph().addNode(node);
+        logger.debug("          Created instance field typing node: {}", node);
         return node;
     }
 
@@ -85,6 +85,7 @@ public class TypingSubGraph {
         TypingNode node = new TypingNode(getCgNode(), fv, f);
         value2Nodes.put(fv, node);
         getTypingGraph().addNode(node);
+        logger.debug("          Created static field typing node: {}", node);
         return node;
     }
 
@@ -94,6 +95,7 @@ public class TypingSubGraph {
         node.markFakeStringKind();
         value2Nodes.put(fv, node);
         getTypingGraph().addNode(node);
+        logger.debug("          Created fake constant typing node: {}", node);
         return node;
     }
 

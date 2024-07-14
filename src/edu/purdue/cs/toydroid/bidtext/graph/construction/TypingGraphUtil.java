@@ -55,14 +55,14 @@ public class TypingGraphUtil {
         Map<Statement, SimpleCounter> visitedStatementCount = new HashMap<>();
         int idx = 0;
         for (Statement stmt : sdg) {
-            if (stmt.getNode()
-                    .getMethod()
-                    .getDeclaringClass()
-                    .getClassLoader()
-                    .getName()
-                    .toString()
-                    .equals("Application")) {
-                logger.debug("    + SDG stmt: {} ## {}", idx, stmt.toString());
+//            if (stmt.getNode()
+//                    .getMethod()
+//                    .getDeclaringClass()
+//                    .getClassLoader()
+//                    .getName()
+//                    .toString()
+//                    .equals("Application")) {
+            logger.debug("    + SDG stmt: {} ## {}", idx, stmt.toString());
 
 //                final Set<Statement> left = new HashSet<>();
 //                find(sdg, stmt, left);
@@ -74,28 +74,13 @@ public class TypingGraphUtil {
 //                } catch (WalaException e) {
 //                    e.printStackTrace();
 //                }
-            }
+//            }
             idx++;
             buildTypingGraphForStmt(cg, sdg, stmt, visitedStatementCount);
             if (TextLeak.taskTimeout) {
                 break;
             }
         }
-
-        logger.debug("\nGRAPH NODE TYPING");
-        currentTypingGraph.node2Typing.forEach((simpleGraphNode, record) -> {
-            logger.debug("  - {} : {}", currentTypingGraph.getNode(simpleGraphNode.nodeId()), record);
-        });
-
-        logger.debug("\n\nSUBGRAPHS");
-        currentTypingGraph.subGraphs.forEach((cgNode, subgraph) -> {
-            logger.debug("  - SG {} (GraphNodeId {})", cgNode, cgNode.getGraphNodeId());
-            subgraph.value2Nodes.forEach((val, node) -> {
-                logger.debug("        - {} : {} --- {}", val, node,
-                        currentTypingGraph.getTypingRecord(node.getGraphNodeId()));
-            });
-        });
-
 
         visitedStatementCount.clear();
         ssaGet2Nodes.clear();
@@ -104,14 +89,32 @@ public class TypingGraphUtil {
         graph.collectIncomingFields();
         logger.info("   - Revisit TypingGraph for global constants");
         new GlobalConstantStringProcessor(graph).revisitTypingGraph();
-        // for debug purpose
-        // graph.dumpEntrypointTypingGraph();
         logger.info("   - Update Typing Records for Fields");
         graph.updateFieldTypingRecords();
         logger.info("   - Propagate Typing");
         new Propagator(graph).propagate();
+
+        debugPrintNodesAndTyping();
+
+//        logger.debug("\n\nSUBGRAPHS");
+//        currentTypingGraph.subGraphs.forEach((cgNode, subgraph) -> {
+//            logger.debug("  - SG {} (GraphNodeId {})", cgNode, cgNode.getGraphNodeId());
+//            subgraph.value2Nodes.forEach((val, node) -> {
+//                logger.debug("        - {} : {} --- {}", val, node,
+//                        currentTypingGraph.getTypingRecord(node.getGraphNodeId()));
+//            });
+//        });
+
+
         // clear typing graph at the end - remove unused data for memory efficiency
         graph.clearAtEnd();
+    }
+
+    private static void debugPrintNodesAndTyping() {
+        logger.debug("\nGRAPH NODE TYPING");
+        currentTypingGraph.node2Typing.forEach((simpleGraphNode, record) ->
+                logger.debug("  - {} : {}", currentTypingGraph.getNode(simpleGraphNode.nodeId()), record)
+        );
     }
 
     private static void buildTypingGraphForStmt(CallGraph cg, Graph<Statement> sdg, Statement stmt,
@@ -152,10 +155,7 @@ public class TypingGraphUtil {
         Statement stmt = item.statement();
         TypingNode cachedNode = item.cachedNode().orElse(null);
         Kind kind = stmt.getKind();
-        if (kind != Kind.HEAP_PARAM_CALLEE && kind != Kind.HEAP_PARAM_CALLER && kind != Kind.HEAP_RET_CALLEE &&
-                kind != Kind.HEAP_RET_CALLER) {
-            logger.debug("      - Handle stmt: {}", stmt.toString());
-        }
+        logger.debug("      - Handle stmt: {}", stmt.toString());
         return switch (kind) {
             case PHI -> handlePhi((PhiStatement) stmt);
             case NORMAL -> handleNormal((NormalStatement) stmt, cachedNode, worklist);
@@ -332,8 +332,8 @@ public class TypingGraphUtil {
             backwardConstraint.addPath(predStatement.get());
         }
         forwardConstraint.addPath(statement);
-        orec.addForwardTypingConstraint(forwardConstraint);
-        nrec.addBackwardTypingConstraint(backwardConstraint);
+        nrec.addForwardTypingConstraint(forwardConstraint);
+        orec.addBackwardTypingConstraint(backwardConstraint);
     }
 
 
@@ -458,7 +458,6 @@ public class TypingGraphUtil {
 
     private static void handleSSANew(SSANewInstruction inst, TypingSubGraph sg) {
         int def = inst.getDef();
-        System.out.println("SSANew def: " + def);
         TypingNode defNode = sg.findOrCreate(def);
         defNode.joke();
     }

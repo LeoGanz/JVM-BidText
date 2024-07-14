@@ -1,16 +1,18 @@
 package edu.purdue.cs.toydroid.bidtext.graph;
 
 import com.ibm.wala.ipa.slicer.Statement;
-import edu.purdue.cs.toydroid.bidtext.analysis.TextAnalysis;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 
 public class TypingRecord {
+    private static final Logger logger = LogManager.getLogger(TypingRecord.class);
     public static final String APPEND_PREFIX = "{[<";
     public static final String APPEND_POSTFIX = ">]}";
     public static final String APPEND_VAR_PREFIX = "+*^";
     public static final String APPEND_VAR_POSTFIX = "^*+";
-    private int initialId;
+    private final SimpleGraphNode nodeIdInTypingGraph;
     private Map<String, List<Statement>> typingTexts;
     private Set<Object> typingConstants;
     private Map<SimpleGraphNode, List<Statement>> inputFields;
@@ -19,8 +21,8 @@ public class TypingRecord {
     private Set<TypingConstraint> backwardConstraints;
     private Set<StringBuilder> appendResults;
 
-    public TypingRecord(int id) {
-        initialId = id;
+    public TypingRecord(SimpleGraphNode id) {
+        nodeIdInTypingGraph = id;
         typingTexts = new HashMap<>();
         typingConstants = new HashSet<>();
         inputFields = new HashMap<>();
@@ -214,9 +216,9 @@ public class TypingRecord {
         Map<String, List<Statement>> m = typingTexts;
         if (!m.containsKey(s)) {
             List<Statement> l = null;
-            if (TextAnalysis.maybeKeyword(s)) {
-                l = new LinkedList<>();
-            }
+//            if (TextAnalysis.maybeKeyword(s)) {
+            l = new LinkedList<>();
+//            }
             m.put(s, l);
             return true;
         }
@@ -231,7 +233,7 @@ public class TypingRecord {
         SimpleGraphNode sgn = SimpleGraphNode.make(nodeId);
         Map<SimpleGraphNode, List<Statement>> m = inputFields;
         if (!m.containsKey(sgn)) {
-            List<Statement> l = new LinkedList<Statement>();
+            List<Statement> l = new LinkedList<>();
             m.put(sgn, l);
             return true;
         }
@@ -242,7 +244,7 @@ public class TypingRecord {
         SimpleGraphNode sgn = SimpleGraphNode.make(nodeId);
         Map<SimpleGraphNode, List<Statement>> m = outputFields;
         if (!m.containsKey(sgn)) {
-            List<Statement> l = new LinkedList<Statement>();
+            List<Statement> l = new LinkedList<>();
             m.put(sgn, l);
             return true;
         }
@@ -250,17 +252,23 @@ public class TypingRecord {
     }
 
     public boolean addForwardTypingConstraint(TypingConstraint c) {
-        if (c.getRhs() != initialId) {
-            c.setRhs(initialId);
+        if (c.getRhs() != nodeIdInTypingGraph.nodeId()) {
+            throw new IllegalArgumentException("ForwardTypingConstraint's rhs is not initialId");
+//            c.setRhs(initialId);
         }
-        return forwardConstraints.add(c);
+        boolean newlyAdded = forwardConstraints.add(c);
+        logger.debug("          Set constraint {} as forward for node {}", c, nodeIdInTypingGraph);
+        return newlyAdded;
     }
 
     public boolean addBackwardTypingConstraint(TypingConstraint c) {
-        if (c.getLhs() != initialId) {
-            c.setLhs(initialId);
+        if (c.getLhs() != nodeIdInTypingGraph.nodeId()) {
+            throw new IllegalArgumentException("BackwardTypingConstraint's lhs is not initialId");
+//            c.setLhs(initialId);
         }
-        return backwardConstraints.add(c);
+        boolean newlyAdded = backwardConstraints.add(c);
+        logger.debug("          Set constraint {} as backward for node {}", c, nodeIdInTypingGraph);
+        return newlyAdded;
     }
 
     public boolean hasConstants() {
@@ -354,7 +362,7 @@ public class TypingRecord {
     }
 
     public int getInitialId() {
-        return initialId;
+        return nodeIdInTypingGraph.nodeId();
     }
 
     @Override

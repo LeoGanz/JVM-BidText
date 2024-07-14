@@ -69,6 +69,7 @@ public class TypingGraph {
 
     public void addNode(TypingNode node) {
         nodeManager.addNode(node);
+        findOrCreateTypingRecord(node.getGraphNodeId()); // not originally in the code
     }
 
     public TypingNode getNode(int n) {
@@ -91,7 +92,7 @@ public class TypingGraph {
         SimpleGraphNode n = SimpleGraphNode.make(nodeId);
         TypingRecord r = node2Typing.get(n);
         if (r == null) {
-            r = new TypingRecord(nodeId);
+            r = new TypingRecord(n);
             node2Typing.put(n, r);
         }
         return r;
@@ -109,8 +110,7 @@ public class TypingGraph {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof TypingGraph) {
-            TypingGraph g = (TypingGraph) obj;
+        if (obj instanceof TypingGraph g) {
             return entrypoint.equals(g.entrypoint);
         }
         return false;
