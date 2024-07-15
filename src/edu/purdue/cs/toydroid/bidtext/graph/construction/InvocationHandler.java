@@ -14,10 +14,7 @@ import edu.purdue.cs.toydroid.utils.WalaUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class InvocationHandler {
     private static final Logger logger = LogManager.getLogger(InvocationHandler.class);
@@ -80,6 +77,7 @@ public class InvocationHandler {
         for (int i = offsetInUses; i < instruction.getNumberOfPositionalParameters(); i++) {
             int use = instruction.getUse(i);
             debugInfo.append(" ").append(use);
+            appendVarName(debugInfo, use);
             TypingNode node = subGraph.findOrCreate(use);
             if (node.isConstant()) {
                 constantNodes.add(node);
@@ -90,14 +88,25 @@ public class InvocationHandler {
 
         if (instruction.hasDef()) {
             debugInfo.append(", defines (returns): ").append(instruction.getDef());
+            appendVarName(debugInfo, instruction.getDef());
             returnValueNode = subGraph.findOrCreate(instruction.getDef());
         }
         if (!instruction.isStatic()) {
             debugInfo.append(", this reference: ").append(instruction.getReceiver());
+            appendVarName(debugInfo, instruction.getReceiver());
             thisNode = subGraph.findOrCreate(instruction.getReceiver());
             // possibly mark for skipping depending on the class name of inst.getDeclaredTarget().getDeclaringClass()
         }
         logger.debug(debugInfo.toString());
+    }
+
+    private StringBuilder appendVarName(StringBuilder debugInfo, int value) {
+        String[] localNames = cgNode.getIR().getLocalNames(instruction.iIndex(), value);
+        if (localNames == null || localNames.length == 0 || localNames[0] == null) {
+            return debugInfo;
+        }
+        Arrays.stream(localNames).forEach(name -> debugInfo.append(" '").append(name).append("'"));
+        return debugInfo;
     }
 
     private boolean isStringBuilderInvocation() {

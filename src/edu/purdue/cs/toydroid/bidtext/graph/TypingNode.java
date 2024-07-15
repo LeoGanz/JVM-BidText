@@ -1,6 +1,7 @@
 package edu.purdue.cs.toydroid.bidtext.graph;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.util.graph.impl.NodeWithNumber;
 
@@ -98,6 +99,8 @@ public class TypingNode extends NodeWithNumber {
         builder.append(">");
         builder.append("v");
         builder.append(value);
+        SSAInstruction inst = cgNode.getDU().getDef(value);
+        builder.append(getName(inst));
         if (isField()) {
             builder.append(": ");
             if (isStaticField()) {
@@ -112,6 +115,25 @@ public class TypingNode extends NodeWithNumber {
 
         return builder.toString();
     }
+
+    private String getName(SSAInstruction instruction) {
+        if (instruction == null) {
+            return "";
+        }
+        StringBuilder name = new StringBuilder();
+        if (instruction.hasDef()) {
+            String[] names = cgNode.getIR().getLocalNames(instruction.iIndex(), instruction.getDef());
+            if (names != null && names.length > 0) {
+                name = new StringBuilder("[").append(names[0]);
+                for (int i = 1; i < names.length; i++) {
+                    name.append(", ").append(names[i]);
+                }
+                name.append("]");
+            }
+        }
+        return name.toString();
+    }
+
 
     public boolean equals(Object obj) {
         if (obj instanceof TypingNode tgn) {
