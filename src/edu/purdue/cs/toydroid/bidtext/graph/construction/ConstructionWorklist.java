@@ -1,6 +1,7 @@
 package edu.purdue.cs.toydroid.bidtext.graph.construction;
 
 import com.ibm.wala.ipa.slicer.*;
+import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
 
@@ -15,10 +16,16 @@ public class ConstructionWorklist implements Iterable<ConstructionWorklist.Item>
     private final Map<MethodReference, ParamCaller> calleesOfMethodInvocations;
     private final Map<MethodReference, NormalStatement> calleesOfReturns;
 
+    // When getfield instructions are executed, a regular node for the local variable holding the result from getfield is created
+    // Furthermore an artificial field node is created (vx999) to represent the field that is being accessed.
+    // These artificial field nodes are stored in this map and can be used to link new artificial field nodes accessing the same field to all the other field accesses.
+    private final Map<FieldReference, Set<TypingNode>> artificialFieldNodes;
+
     public ConstructionWorklist() {
         delegate = new LinkedList<>();
         calleesOfMethodInvocations = new HashMap<>();
         calleesOfReturns = new HashMap<>();
+        artificialFieldNodes = new HashMap<>();
     }
 
     public boolean isEmpty() {
@@ -52,10 +59,19 @@ public class ConstructionWorklist implements Iterable<ConstructionWorklist.Item>
         }
     }
 
-    public void cacheLatestStatement(NormalStatement normalStatement) {
+    public void cacheCalleeOfReturn(NormalStatement normalStatement) {
         if (normalStatement != null) {
             calleesOfReturns.put(normalStatement.getNode().getMethod().getReference(), normalStatement);
         }
+    }
+
+    public void cacheArtificialFieldNode(FieldReference field, TypingNode node) {
+        // TODO: only available while processing predecessors of a top level statement (each get a new worklist). Should this be maintained in TypingGraphUtil?
+        artificialFieldNodes.computeIfAbsent(field, __ -> new HashSet<>()).add(node);
+    }
+
+    public Set<TypingNode> getArtificialFieldNodes(FieldReference field) {
+        return artificialFieldNodes.computeIfAbsent(field, __ -> new HashSet<>());
     }
 
     public Item item(Statement stmt) {
@@ -121,10 +137,9 @@ public class ConstructionWorklist implements Iterable<ConstructionWorklist.Item>
                 return false;
             }
             var that = (Item) obj;
-            return Objects.equals(this.statement, that.statement) &&
-                    Objects.equals(this.cachedNode, that.cachedNode) &&
-                    Objects.equals(this.cachedParamCaller, that.cachedParamCaller)
-                    && Objects.equals(this.cachedNormalStatement, that.cachedNormalStatement);
+            return Objects.equals(this.statement, that.statement) && Objects.equals(this.cachedNode, that.cachedNode) &&
+                    Objects.equals(this.cachedParamCaller, that.cachedParamCaller) &&
+                    Objects.equals(this.cachedNormalStatement, that.cachedNormalStatement);
         }
 
         @Override
@@ -134,11 +149,9 @@ public class ConstructionWorklist implements Iterable<ConstructionWorklist.Item>
 
         @Override
         public String toString() {
-            return "Item[" +
-                    "statement=" + statement + ", " +
-                    "cachedNode=" + cachedNode + ", " +
-                    "cachedParamCaller=" + cachedParamCaller + ", " +
-                    "cachedNormalStatement=" + cachedNormalStatement + ']';
+            return "Item[" + "statement=" + statement + ", " + "cachedNode=" + cachedNode + ", " +
+                    "cachedParamCaller=" + cachedParamCaller + ", " + "cachedNormalStatement=" + cachedNormalStatement +
+                    ']';
         }
 
     }

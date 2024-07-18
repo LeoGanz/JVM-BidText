@@ -12,6 +12,7 @@ import com.ibm.wala.ipa.slicer.HeapStatement.HeapReturnCaller;
 import com.ibm.wala.ipa.slicer.*;
 import com.ibm.wala.ipa.slicer.Statement.Kind;
 import com.ibm.wala.ssa.*;
+import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.util.graph.Graph;
 import edu.purdue.cs.toydroid.bidtext.android.TextLeak;
 import edu.purdue.cs.toydroid.bidtext.graph.*;
@@ -24,10 +25,10 @@ import java.util.*;
 
 public class TypingGraphUtil {
     private static final Logger logger = LogManager.getLogger(TypingGraphUtil.class);
-    public static Map<Entrypoint, TypingGraph> entry2Graph;
-    private static TypingGraph currentTypingGraph;
     private static final Map<SSAGetInstruction, TypingNode> ssaGet2Nodes;
     private static final Map<PointerKey, TypingNode> sFieldHeaps;
+    public static Map<Entrypoint, TypingGraph> entry2Graph;
+    private static TypingGraph currentTypingGraph;
 
     static {
         entry2Graph = new HashMap<>();
@@ -112,9 +113,8 @@ public class TypingGraphUtil {
 
     private static void debugPrintNodesAndTyping() {
         logger.debug("\nGRAPH NODE TYPING");
-        currentTypingGraph.node2Typing.forEach((simpleGraphNode, record) ->
-                logger.debug("  - {} : {}", currentTypingGraph.getNode(simpleGraphNode.nodeId()), record)
-        );
+        currentTypingGraph.node2Typing.forEach((simpleGraphNode, record) -> logger.debug("  - {} : {}",
+                currentTypingGraph.getNode(simpleGraphNode.nodeId()), record));
     }
 
     private static void buildTypingGraphForStmt(CallGraph cg, Graph<Statement> sdg, Statement stmt,
@@ -150,8 +150,7 @@ public class TypingGraphUtil {
     }
 
     private static Optional<TypingNode> handleStatement(CallGraph cg, Graph<Statement> sdg,
-                                                        ConstructionWorklist.Item item,
-                                                        ConstructionWorklist worklist) {
+                                                        ConstructionWorklist.Item item, ConstructionWorklist worklist) {
         Statement stmt = item.statement();
         TypingNode cachedNode = item.cachedNode().orElse(null);
         Kind kind = stmt.getKind();
@@ -219,13 +218,13 @@ public class TypingGraphUtil {
 
         TypingNode newCachedNode = null;
         if (inst instanceof SSAPutInstruction) {
-            newCachedNode = handleSSAPut(nstmt, (SSAPutInstruction) inst, sg);
+            newCachedNode = handleSSAPut(nstmt, (SSAPutInstruction) inst, sg, worklist);
             // System.err.println("SSAPut: " + inst + " \n\t [" + newCachedNode
             // + "]");
         } else if (inst instanceof SSAGetInstruction) {
             // System.err.println("SSAGet: " + inst + " \n\t [" + cachedNode +
             // "]");
-            handleSSAGet(nstmt, (SSAGetInstruction) inst, sg, cachedNode);
+            handleSSAGet(nstmt, (SSAGetInstruction) inst, sg, cachedNode, worklist);
         } else if (inst instanceof SSACheckCastInstruction) {
             handleSSACheckCast(nstmt, (SSACheckCastInstruction) inst, sg);
         } else if (inst instanceof SSANewInstruction) {
@@ -295,9 +294,7 @@ public class TypingGraphUtil {
     }
 
     private static <StatementWithValueNumber extends Statement & ValueNumberCarrier> void constructTypingRecordsWithEQConstraintWithCachedStatement(
-            StatementWithValueNumber statement,
-            TypingNode predNode,
-            Optional<? extends Statement> predStatement,
+            StatementWithValueNumber statement, TypingNode predNode, Optional<? extends Statement> predStatement,
             TypingSubGraph sg) {
         if (predNode == null) {
             // TODO Don't error if is entrypoint
@@ -325,13 +322,15 @@ public class TypingGraphUtil {
         if (predStatement.isPresent()) {
             forwardConstraint.addPath(predStatement.get());
             // TODO switch order? probably irrelevant for EQ
-            backwardConstraint = new TypingConstraint(lhsNode.getGraphNodeId(), TypingConstraint.EQ,
-                    rhsNode.getGraphNodeId());
+            backwardConstraint =
+                    new TypingConstraint(lhsNode.getGraphNodeId(), TypingConstraint.EQ, rhsNode.getGraphNodeId());
             // reverse the path for backward propagation
             backwardConstraint.addPath(statement);
             backwardConstraint.addPath(predStatement.get());
         }
-        forwardConstraint.addPath(statement);
+        if (statement != null) {
+            forwardConstraint.addPath(statement);
+        }
         nrec.addForwardTypingConstraint(forwardConstraint);
         orec.addBackwardTypingConstraint(backwardConstraint);
     }
@@ -379,18 +378,25 @@ public class TypingGraphUtil {
     /************************************************************/
     /************* Handle Specific SSA Instructions *************/
     /************************************************************/
-    private static TypingNode handleSSAPut(NormalStatement stmt, SSAPutInstruction inst, TypingSubGraph sg) {
+    private static TypingNode handleSSAPut(NormalStatement stmt, SSAPutInstruction inst, TypingSubGraph sg,
+                                           ConstructionWorklist worklist) {
         int val = inst.getVal(); // rhs
-        int ref;
         TypingNode valNode = sg.findOrCreate(val);
         TypingNode refNode;
         // currentTypingGraph.
+        FieldReference declaredField = inst.getDeclaredField();
         if (inst.isStatic()) {
-            refNode = sg.createStaticFieldNode(inst.getDeclaredField());
+            refNode = sg.createStaticFieldNode(declaredField);
         } else {
-            ref = inst.getRef();
-            refNode = sg.createInstanceFieldNode(ref, inst.getDeclaredField());
+            refNode = sg.createInstanceFieldNode(inst.getRef(), declaredField);
         }
+
+        // link all views of the same field. Linkings with nodes that appear later will end up as backward constraints
+        worklist.getArtificialFieldNodes(declaredField)
+                // path of stmt is recorded the linking between local var and field (see below)
+                .forEach(node -> constructTypingRecordsWithEQConstraint(null, node, refNode));
+        worklist.cacheArtificialFieldNode(declaredField, refNode);
+
         // currentTypingGraph.mergeClass(valNode, refNode);
         constructTypingRecordsWithEQConstraint(stmt, valNode, refNode);
 
@@ -399,7 +405,7 @@ public class TypingGraphUtil {
     }
 
     private static void handleSSAGet(NormalStatement stmt, SSAGetInstruction inst, TypingSubGraph sg,
-                                     TypingNode cachedNode) {
+                                     TypingNode cachedNode, ConstructionWorklist worklist) {
         // if (inst.getDeclaredField()
         // .getName().toString().equals("userMessageForWeb"))
         // return;
@@ -434,11 +440,20 @@ public class TypingGraphUtil {
         } else {
             // some incoming field access from other entrypoint scope
             TypingNode refNode;
+            FieldReference declaredField = inst.getDeclaredField();
             if (inst.isStatic()) {
-                refNode = sg.createStaticFieldNode(inst.getDeclaredField());
+                refNode = sg.createStaticFieldNode(declaredField);
             } else {
-                refNode = sg.createInstanceFieldNode(inst.getRef(), inst.getDeclaredField());
+                refNode = sg.createInstanceFieldNode(inst.getRef(), declaredField);
             }
+
+            // link all views of the same field. Linkings with nodes that appear later will end up as backward constraints
+            worklist.getArtificialFieldNodes(declaredField)
+                    // path of stmt is recorded the linking between local var and field (see below)
+                    .forEach(node -> constructTypingRecordsWithEQConstraint(null, node, refNode));
+            worklist.cacheArtificialFieldNode(declaredField, refNode);
+
+            // link local variable with view of the field
             // currentTypingGraph.mergeClass(refNode, defNode);
             constructTypingRecordsWithEQConstraint(stmt, refNode, defNode);
 
@@ -485,7 +500,7 @@ public class TypingGraphUtil {
                                               ConstructionWorklist worklist) {
         if (!inst.returnsVoid()) {
             int ret = inst.getResult();
-            worklist.cacheLatestStatement(stmt);
+            worklist.cacheCalleeOfReturn(stmt);
             return sg.findOrCreate(ret);
         }
         return null;
