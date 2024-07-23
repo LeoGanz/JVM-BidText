@@ -321,12 +321,11 @@ public class TypingGraphUtil {
         TypingConstraint backwardConstraint = forwardConstraint;
         if (predStatement.isPresent()) {
             forwardConstraint.addPath(predStatement.get());
-            // TODO switch order? probably irrelevant for EQ
-            backwardConstraint =
-                    new TypingConstraint(lhsNode.getGraphNodeId(), TypingConstraint.EQ, rhsNode.getGraphNodeId());
-            // reverse the path for backward propagation
-            backwardConstraint.addPath(statement);
-            backwardConstraint.addPath(predStatement.get());
+//            backwardConstraint =
+//                    new TypingConstraint(lhsNode.getGraphNodeId(), TypingConstraint.EQ, rhsNode.getGraphNodeId());
+//            // reverse the path for backward propagation ?
+//            backwardConstraint.addPath(predStatement.get());
+//            backwardConstraint.addPath(statement);
         }
         if (statement != null) {
             forwardConstraint.addPath(statement);
