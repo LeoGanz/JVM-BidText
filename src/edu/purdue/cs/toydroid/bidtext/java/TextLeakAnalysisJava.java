@@ -47,7 +47,7 @@ public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
 
     private void initialize() throws Exception {
         String exclusionFilePath = SimpleConfig.getExclusionFile();
-        System.out.println("Exclusion file: " + exclusionFilePath);
+        logger.info("Exclusion file: " + exclusionFilePath);
         File exclusionsFile = exclusionFilePath != null ? new File(exclusionFilePath) : null;
         scope = AnalysisScopeReader.instance.makeJavaBinaryAnalysisScope(
                 appJar, exclusionsFile);
@@ -57,7 +57,7 @@ public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
         WalaUtil.setClassHierarchy(classHierarchy);
         entrypoints = StreamSupport.stream(Util.makeMainEntrypoints(classHierarchy).spliterator(), false)
                 .collect(Collectors.toSet());
-        System.out.println("Entrypoints: " + entrypoints);
+        logger.info("Entrypoints: " + entrypoints);
     }
 
     private void analyze() throws Exception {

@@ -9,12 +9,15 @@ public class Main {
     private static final long DEFAULT_TIMEOUT = 20;
     private static long timeout = DEFAULT_TIMEOUT;
     private static final Logger logger = LogManager.getLogger(Main.class);
-    private static String inputFile = "/mnt/data/Users/Leonard/git/bidtext/res/test_apps/com.buycott.android-22.apk";
 
     public static void main(String[] args) throws Throwable {
         long analysisStart = System.currentTimeMillis();
+        String inputFile;
         if (args.length == 1) {
             inputFile = args[0];
+        } else {
+            throw new IllegalArgumentException(
+                    "Please specify path to the system under test as the first and only argument.");
         }
         String timeoutSetting = System.getProperty("BidText.Timeout", Long.toString(DEFAULT_TIMEOUT));
         try {
@@ -56,12 +59,11 @@ public class Main {
         }
         logger.info("Total Time: {} seconds.", time);
         logger.info("Total Memory: {} [{} bytes]", mem, memUsed);
-        System.exit(0);
     }
 
-    public static void doAnalysis(String apk) throws Throwable {
+    public static void doAnalysis(String sutPath) throws Throwable {
         logger.info("Start Analysis...");
-        TextLeakAnalysisJava analysis = new TextLeakAnalysisJava(apk);
+        TextLeakAnalysisJava analysis = new TextLeakAnalysisJava(sutPath);
         try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
             Future<TextLeakAnalysisJava> future = executor.submit(analysis);
             try {

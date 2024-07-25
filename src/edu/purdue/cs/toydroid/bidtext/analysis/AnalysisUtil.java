@@ -15,12 +15,16 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Stream;
 
 public class AnalysisUtil {
     private static final Logger logger = LogManager.getLogger(AnalysisUtil.class);
 
     private static final Set<InterestingNode> sinks = new HashSet<>();
+    public static final String REPORT_FOLDER = "report";
 
     public static boolean DUMP_VERBOSE = true;
     private static InterestingNode latestInterestingNode = null;
@@ -66,7 +70,8 @@ public class AnalysisUtil {
 
     private static void dumpTextForSink(InterestingNode sink, int idx) throws IOException {
         logger.info(" - dump text for sink: {}", sink.sinkSignature());
-        File resultFile = new File(idx + "." + sink.tag + ".txt");
+        clearSinksFromReportFolder();
+        File resultFile = new File(REPORT_FOLDER + "/" + idx + "." + sink.tag + ".txt");
 
         PrintWriter writer;
         try {
@@ -93,18 +98,17 @@ public class AnalysisUtil {
             collectTextsForNode(gNode, graph, codeTexts, constants);
             collectTextsForFields(gNode, graph, codeTexts, constants);
         }
-        System.out.println("codeTexts: " + codeTexts);
-        System.out.println("constants: " + constants);
+        logger.debug("codeTexts: " + codeTexts);
+        logger.debug("constants: " + constants);
         TextAnalysis textAnalysis = new TextAnalysis();
         String sensitiveTag = textAnalysis.analyze(codeTexts, false);
-        System.out.println("sensitiveTag: " + sensitiveTag);
-        System.out.println("text2Path: " + textAnalysis.getText2Path());
+        logger.debug("text2Path: " + textAnalysis.getText2Path());
 
 
         if (DUMP_VERBOSE) {
             if (!sensitiveTag.isEmpty()) {
-                logger.debug("   $[CODE] {}", sensitiveTag);
-                writer.print(" ^[CODE]: ");
+                logger.debug("Sensitive Tag: {}", sensitiveTag);
+                writer.print("Sensitive Tag: ");
                 writer.print(sensitiveTag);
                 writer.println();
             }
@@ -119,6 +123,15 @@ public class AnalysisUtil {
         if (resultFile.exists() && resultFile.length() <= fileLengthAfterWritingHeader + 10) {
             logger.debug("No information found for sink. Deleting log file.");
 //            resultFile.delete();
+        }
+    }
+
+    private static void clearSinksFromReportFolder() throws IOException {
+        try (Stream<Path> pathStream = Files.walk(Path.of(REPORT_FOLDER))) {
+            pathStream.sorted(Comparator.reverseOrder())
+                    .map(Path::toFile)
+                    .filter(path -> path.getAbsolutePath().matches(".*[0-9]*\\.[a-zA-Z]*\\.txt"))
+                    .forEach(File::delete);
         }
     }
 

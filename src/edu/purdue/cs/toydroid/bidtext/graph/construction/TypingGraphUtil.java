@@ -112,7 +112,7 @@ public class TypingGraphUtil {
     }
 
     private static void debugPrintNodesAndTyping() {
-        logger.debug("\nGRAPH NODE TYPING");
+        logger.debug("GRAPH NODE TYPING");
         currentTypingGraph.node2Typing.forEach((simpleGraphNode, record) -> logger.debug("  - {} : {}",
                 currentTypingGraph.getNode(simpleGraphNode.nodeId()), record));
     }

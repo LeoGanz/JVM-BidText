@@ -4,3 +4,4 @@ dat/Config.properties
 build/
 .gradle/
 /.idea/
+/report/
