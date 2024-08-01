@@ -77,10 +77,6 @@ LOG android.util.Log.wtf(Ljava/lang/String;Ljava/lang/String;)I 0 1
 LOG android.util.Log.wtf(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I 0 1 2
 LOG android.util.Log.wtf(Ljava/lang/String;Ljava/lang/Throwable;)I 0 1
 
-LOG java.io.PrintStream.println(Ljava/lang/String;)V 1
-LOG java.io.PrintStream.println(Ljava/lang/Object;)V 1
-LOG java.io.PrintStream.println([C)V 1
-
 IO java.io.BufferedOutputStream.write([BII)V 1
 IO java.io.BufferedOutputStream.write([B)V 1
 IO java.io.BufferedWriter.write([CII)V 1
@@ -165,3 +161,60 @@ URL java.net.URL.getContent([Ljava/lang/Class;)Ljava/lang/Object; 0
 URL java.net.URL.openConnection(Ljava/net/Proxy;)Ljava/net/URLConnection; 0
 URL java.net.URL.openConnection()Ljava/net/URLConnection; 0
 URL java.net.URL.openStream()Ljava/io/InputStream; 0
+
+
+
+LOG java.io.PrintStream.println(Ljava/lang/String;)V 1
+LOG java.io.PrintStream.println(Ljava/lang/Object;)V 1
+LOG java.io.PrintStream.println([C)V 1
+
+LOG org.slf4j.Logger.trace(Ljava/lang/String;)V 1
+LOG org.slf4j.Logger.trace(Ljava/lang/String;Ljava/lang/Object;)V 1 2
+LOG org.slf4j.Logger.trace(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.trace(Ljava/lang/String;[Ljava/lang/Object;)V 1 2
+LOG org.slf4j.Logger.trace(Ljava/lang/String;Ljava/lang/Throwable;)V 1 2
+LOG org.slf4j.Logger.trace(Lorg.slf4j.Marker;Ljava/lang/String;)V 1 2
+LOG org.slf4j.Logger.trace(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.trace(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V 1 2 3 4
+LOG org.slf4j.Logger.trace(Lorg.slf4j.Marker;Ljava/lang/String;[Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.trace(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Throwable;)V 1 2 3
+LOG org.slf4j.Logger.debug(Ljava/lang/String;)V 1
+LOG org.slf4j.Logger.debug(Ljava/lang/String;Ljava/lang/Object;)V 1 2
+LOG org.slf4j.Logger.debug(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.debug(Ljava/lang/String;[Ljava/lang/Object;)V 1 2
+LOG org.slf4j.Logger.debug(Ljava/lang/String;Ljava/lang/Throwable;)V 1 2
+LOG org.slf4j.Logger.debug(Lorg.slf4j.Marker;Ljava/lang/String;)V 1 2
+LOG org.slf4j.Logger.debug(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.debug(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V 1 2 3 4
+LOG org.slf4j.Logger.debug(Lorg.slf4j.Marker;Ljava/lang/String;[Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.debug(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Throwable;)V 1 2 3
+LOG org.slf4j.Logger.info(Ljava/lang/String;)V 1
+LOG org.slf4j.Logger.info(Ljava/lang/String;Ljava/lang/Object;)V 1 2
+LOG org.slf4j.Logger.info(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.info(Ljava/lang/String;[Ljava/lang/Object;)V 1 2
+LOG org.slf4j.Logger.info(Ljava/lang/String;Ljava/lang/Throwable;)V 1 2
+LOG org.slf4j.Logger.info(Lorg.slf4j.Marker;Ljava/lang/String;)V 1 2
+LOG org.slf4j.Logger.info(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.info(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V 1 2 3 4
+LOG org.slf4j.Logger.info(Lorg.slf4j.Marker;Ljava/lang/String;[Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.info(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Throwable;)V 1 2 3
+LOG org.slf4j.Logger.warn(Ljava/lang/String;)V 1
+LOG org.slf4j.Logger.warn(Ljava/lang/String;Ljava/lang/Object;)V 1 2
+LOG org.slf4j.Logger.warn(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.warn(Ljava/lang/String;[Ljava/lang/Object;)V 1 2
+LOG org.slf4j.Logger.warn(Ljava/lang/String;Ljava/lang/Throwable;)V 1 2
+LOG org.slf4j.Logger.warn(Lorg.slf4j.Marker;Ljava/lang/String;)V 1 2
+LOG org.slf4j.Logger.warn(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.warn(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V 1 2 3 4
+LOG org.slf4j.Logger.warn(Lorg.slf4j.Marker;Ljava/lang/String;[Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.warn(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Throwable;)V 1 2 3
+LOG org.slf4j.Logger.error(Ljava/lang/String;)V 1
+LOG org.slf4j.Logger.error(Ljava/lang/String;Ljava/lang/Object;)V 1 2
+LOG org.slf4j.Logger.error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.error(Ljava/lang/String;[Ljava/lang/Object;)V 1 2
+LOG org.slf4j.Logger.error(Ljava/lang/String;Ljava/lang/Throwable;)V 1 2
+LOG org.slf4j.Logger.error(Lorg.slf4j.Marker;Ljava/lang/String;)V 1 2
+LOG org.slf4j.Logger.error(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.error(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V 1 2 3 4
+LOG org.slf4j.Logger.error(Lorg.slf4j.Marker;Ljava/lang/String;[Ljava/lang/Object;)V 1 2 3
+LOG org.slf4j.Logger.error(Lorg.slf4j.Marker;Ljava/lang/String;Ljava/lang/Throwable;)V 1 2 3

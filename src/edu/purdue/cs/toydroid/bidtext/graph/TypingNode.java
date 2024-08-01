@@ -121,7 +121,7 @@ public class TypingNode extends NodeWithNumber {
             return "";
         }
         StringBuilder name = new StringBuilder();
-        if (instruction.hasDef()) {
+        if (instruction.hasDef() && instruction.iIndex() >= 0) {
             String[] names = cgNode.getIR().getLocalNames(instruction.iIndex(), instruction.getDef());
             if (names != null && names.length > 0) {
                 name = new StringBuilder("[").append(names[0]);

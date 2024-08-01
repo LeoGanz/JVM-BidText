@@ -57,6 +57,7 @@ public class AnalysisUtil {
      */
     public static void dumpTextForSinks() throws IOException {
         logger.info("Dump text for all sinks.");
+        clearSinksFromReportFolder();
         if (sinks.isEmpty()) {
             logger.warn("No interesting sinks are found.");
             return;
@@ -70,7 +71,6 @@ public class AnalysisUtil {
 
     private static void dumpTextForSink(InterestingNode sink, int idx) throws IOException {
         logger.info(" - dump text for sink: {}", sink.sinkSignature());
-        clearSinksFromReportFolder();
         File resultFile = new File(REPORT_FOLDER + "/" + idx + "." + sink.tag + ".txt");
 
         PrintWriter writer;
@@ -84,7 +84,6 @@ public class AnalysisUtil {
             return;
         }
         printHeader(sink, writer);
-        long fileLengthAfterWritingHeader = resultFile.length();
 
         Map<String, List<Statement>> codeTexts = new HashMap<>();
         Set<Integer> constants = new HashSet<>();
@@ -120,9 +119,9 @@ public class AnalysisUtil {
         writer.flush();
         writer.close();
 
-        if (resultFile.exists() && resultFile.length() <= fileLengthAfterWritingHeader + 10) {
+        if (resultFile.exists() && textAnalysis.getText2Path().isEmpty()) {
             logger.debug("No information found for sink. Deleting log file.");
-//            resultFile.delete();
+            resultFile.delete();
         }
     }
 

@@ -5,7 +5,6 @@ import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisCacheImpl;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
-import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
 import edu.purdue.cs.toydroid.bidtext.analysis.AnalysisUtil;
@@ -18,8 +17,6 @@ import java.io.File;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
 
@@ -55,8 +52,7 @@ public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
 //        System.out.println("ClassHierarchy: " + classHierarchy);
 
         WalaUtil.setClassHierarchy(classHierarchy);
-        entrypoints = StreamSupport.stream(Util.makeMainEntrypoints(classHierarchy).spliterator(), false)
-                .collect(Collectors.toSet());
+        entrypoints = EntrypointDiscovery.discover(classHierarchy);
         logger.info("Entrypoints: " + entrypoints);
     }
 
