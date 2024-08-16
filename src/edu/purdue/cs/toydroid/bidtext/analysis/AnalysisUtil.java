@@ -2,11 +2,11 @@ package edu.purdue.cs.toydroid.bidtext.analysis;
 
 import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
+import edu.purdue.cs.toydroid.bidtext.android.util.ResourceUtil;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingRecord;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingSubGraph;
-import edu.purdue.cs.toydroid.utils.ResourceUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

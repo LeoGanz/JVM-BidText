@@ -1,4 +1,4 @@
-package edu.purdue.cs.toydroid.utils;
+package edu.purdue.cs.toydroid.bidtext.android.util;
 
 import android.util.TypedValue;
 import brut.androlib.Config;
@@ -383,8 +383,9 @@ public class ResourceUtil {
                     Map<String, String> lang2Value = stringValues(ID);
                     if (null != lang2Value) {
                         String v = lang2Value.get("en");
-                        if (v == null)
+                        if (v == null) {
                             v = lang2Value.get(DefaultLanguage);
+                        }
                         ret = v;
                         break;
                     }
@@ -405,8 +406,9 @@ public class ResourceUtil {
 
     public static String resolveNameForId(int id) {
         String name = null;
-        if (id2Name != null)
+        if (id2Name != null) {
             name = id2Name.get(id);
+        }
         return name;
     }
 
@@ -419,8 +421,9 @@ public class ResourceUtil {
      */
     public static Integer resolveIdForName(String name) {
         Integer ID = null;
-        if (name2Id != null)
+        if (name2Id != null) {
             ID = name2Id.get(name);
+        }
         return ID;
     }
 

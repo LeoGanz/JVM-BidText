@@ -21,9 +21,13 @@ import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphSlicer;
 import com.ibm.wala.util.viz.DotUtil;
 import edu.purdue.cs.toydroid.bidtext.analysis.AnalysisUtil;
+import edu.purdue.cs.toydroid.bidtext.android.util.AnalysisScopeUtil;
+import edu.purdue.cs.toydroid.bidtext.android.util.EntrypointUtil;
+import edu.purdue.cs.toydroid.bidtext.android.util.ResourceUtil;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
 import edu.purdue.cs.toydroid.bidtext.graph.construction.TypingGraphUtil;
-import edu.purdue.cs.toydroid.utils.*;
+import edu.purdue.cs.toydroid.utils.SimpleCounter;
+import edu.purdue.cs.toydroid.utils.WalaUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
