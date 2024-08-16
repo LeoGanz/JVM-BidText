@@ -35,7 +35,7 @@ public class AnalysisUtil {
         latestInterestingNode = null;
         if (interestingIndices != null) {
             InterestingNode node = InterestingNode.getInstance(instr, sg, interestingIndices);
-            sinks.add(node);
+            sinks.add(node); //TODO prevent duplicates
             String sinkClassName = instr.getDeclaredTarget().getDeclaringClass().getName().toString();
             String sinkMethodName = instr.getDeclaredTarget().getName().toString();
             String sinkLocationClassName = sg.getCgNode().getMethod().getDeclaringClass().getName().toString();
