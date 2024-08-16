@@ -6,9 +6,7 @@ import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingRecord;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingSubGraph;
-import edu.purdue.cs.toydroid.utils.AnalysisConfig;
 import edu.purdue.cs.toydroid.utils.ResourceUtil;
-import edu.purdue.cs.toydroid.utils.WalaUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,33 +21,24 @@ import java.util.stream.Stream;
 public class AnalysisUtil {
     private static final Logger logger = LogManager.getLogger(AnalysisUtil.class);
 
-    private static final Set<InterestingNode> sinks = new HashSet<>();
+    private static final Set<DiscoveredSink> sinks = new HashSet<>();
     public static final String REPORT_FOLDER = "report";
 
     public static boolean DUMP_VERBOSE = true;
-    private static InterestingNode latestInterestingNode = null;
 
-    public static InterestingNodeType tryRecordInterestingNode(SSAAbstractInvokeInstruction instr, TypingSubGraph sg) {
-        String sig = WalaUtil.getSignature(instr);
-        String interestingIndices = AnalysisConfig.getPotentialSink(sig);
-        latestInterestingNode = null;
-        if (interestingIndices != null) {
-            InterestingNode node = InterestingNode.getInstance(instr, sg, interestingIndices);
-            sinks.add(node); //TODO prevent duplicates
-            String sinkClassName = instr.getDeclaredTarget().getDeclaringClass().getName().toString();
-            String sinkMethodName = instr.getDeclaredTarget().getName().toString();
-            String sinkLocationClassName = sg.getCgNode().getMethod().getDeclaringClass().getName().toString();
-            String sinkLocationMethodName = sg.getCgNode().getMethod().getName().toString();
-            logger.info("        SINK: {}->{}() in [{}.{}()]", sinkClassName, sinkMethodName, sinkLocationClassName,
-                    sinkLocationMethodName);
-            latestInterestingNode = node;
-            return InterestingNodeType.SINK;
+    public static void recordSink(DiscoveredSink sink) {
+        if (sinks.contains(sink)) {
+            return;
         }
-        return InterestingNodeType.NOTHING;
-    }
-
-    public static InterestingNode getLatestInterestingNode() {
-        return latestInterestingNode;
+        sinks.add(sink);
+        SSAAbstractInvokeInstruction instruction = sink.instruction();
+        TypingSubGraph subGraph = sink.enclosingTypingSubGraph();
+        String sinkClassName = instruction.getDeclaredTarget().getDeclaringClass().getName().toString();
+        String sinkMethodName = instruction.getDeclaredTarget().getName().toString();
+        String sinkLocationClassName = subGraph.getCgNode().getMethod().getDeclaringClass().getName().toString();
+        String sinkLocationMethodName = subGraph.getCgNode().getMethod().getName().toString();
+        logger.info("        SINK: {}->{}() in [{}.{}()]", sinkClassName, sinkMethodName, sinkLocationClassName,
+                sinkLocationMethodName);
     }
 
     /**
@@ -63,15 +52,15 @@ public class AnalysisUtil {
             return;
         }
         int idx = 0;
-        for (InterestingNode sink : sinks) {
+        for (DiscoveredSink sink : sinks) {
             dumpTextForSink(sink, idx++);
         }
         logger.info("Dumped text for {} sinks.", idx);
     }
 
-    private static void dumpTextForSink(InterestingNode sink, int idx) throws IOException {
+    private static void dumpTextForSink(DiscoveredSink sink, int idx) throws IOException {
         logger.info(" - dump text for sink: {}", sink.sinkSignature());
-        File resultFile = new File(REPORT_FOLDER + "/" + idx + "." + sink.tag + ".txt");
+        File resultFile = new File(REPORT_FOLDER + "/" + idx + "." + sink.getTag() + ".txt");
 
         PrintWriter writer;
         try {
@@ -87,16 +76,13 @@ public class AnalysisUtil {
 
         Map<String, List<Statement>> codeTexts = new HashMap<>();
         Set<Integer> constants = new HashSet<>();
-        Iterator<TypingNode> args = sink.iterateInterestingArgs();
-        while (args.hasNext()) {
-            TypingNode gNode = args.next();
-            if (gNode.isConstant()) {
-                continue;
-            }
-            TypingGraph graph = sink.enclosingTypingGraph();
-            collectTextsForNode(gNode, graph, codeTexts, constants);
-            collectTextsForFields(gNode, graph, codeTexts, constants);
-        }
+        sink.getInterestingParameters().stream()
+                .filter(gNode -> !gNode.isConstant())
+                .forEach(gNode -> {
+                    TypingGraph graph = sink.enclosingTypingGraph();
+                    collectTextsForNode(gNode, graph, codeTexts, constants);
+                    collectTextsForFields(gNode, graph, codeTexts, constants);
+                });
         logger.debug("codeTexts: " + codeTexts);
         logger.debug("constants: " + constants);
         TextAnalysis textAnalysis = new TextAnalysis();
@@ -154,7 +140,7 @@ public class AnalysisUtil {
         }
     }
 
-    private static void printPaths(InterestingNode sink, TextAnalysis textAnalysis, PrintWriter writer) {
+    private static void printPaths(DiscoveredSink sink, TextAnalysis textAnalysis, PrintWriter writer) {
         Map<String, List<Statement>> text2Path = textAnalysis.getText2Path();
         Set<Map.Entry<String, List<Statement>>> pathSet = text2Path.entrySet();
         for (Map.Entry<String, List<Statement>> entry : pathSet) {
@@ -181,7 +167,7 @@ public class AnalysisUtil {
         }
     }
 
-    private static void printHeader(InterestingNode sink, PrintWriter writer) {
+    private static void printHeader(DiscoveredSink sink, PrintWriter writer) {
         writer.print("SINK [");
         writer.print(sink.sinkSignature());
         writer.print(']');

@@ -52,7 +52,7 @@ public class APIPropagationRules {
     }
 
     public record Rule(ValueIndex left, Operator operator, ValueIndex right) {
-        public static Rule parse(String rule) {
+        private static Rule parse(String rule) {
             Matcher m = RULE_PATTERN.matcher(rule);
             if (!m.find() || m.groupCount() != 3) {
                 throw new IllegalArgumentException("Invalid rule format: " + rule);
@@ -79,7 +79,7 @@ public class APIPropagationRules {
                 return index == -1;
             }
 
-            public static ValueIndex parse(String value) {
+            private static ValueIndex parse(String value) {
                 return new ValueIndex(Integer.parseInt(value));
             }
 

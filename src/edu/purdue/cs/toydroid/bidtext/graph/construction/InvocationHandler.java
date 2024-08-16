@@ -7,14 +7,17 @@ import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.types.MethodReference;
 import edu.purdue.cs.toydroid.bidtext.analysis.AnalysisUtil;
-import edu.purdue.cs.toydroid.bidtext.analysis.InterestingNode;
-import edu.purdue.cs.toydroid.bidtext.analysis.InterestingNodeType;
+import edu.purdue.cs.toydroid.bidtext.analysis.DiscoveredSink;
+import edu.purdue.cs.toydroid.bidtext.analysis.SinkDefinitions;
 import edu.purdue.cs.toydroid.bidtext.graph.*;
 import edu.purdue.cs.toydroid.utils.WalaUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 
 public class InvocationHandler {
     private static final Logger logger = LogManager.getLogger(InvocationHandler.class);
@@ -30,7 +33,7 @@ public class InvocationHandler {
     private final CGNode cgNode;
     private final Statement statement;
     private final SSAAbstractInvokeInstruction instruction;
-    private InterestingNodeType apiType;
+    private boolean isSink;
 
     private List<TypingNode> freeNodes;
     private List<TypingNode> constantNodes;
@@ -47,7 +50,7 @@ public class InvocationHandler {
     }
 
     public void handle() {
-        preProcessInterestingNode();
+        preprocessPotentialSink();
         if (hasNeitherParametersNorReturnValue()) {
             return;
         }
@@ -61,7 +64,6 @@ public class InvocationHandler {
         } else {
             handleGenericInvocation();
         }
-        postProcessInterestingNode();
     }
 
     private boolean hasNeitherParametersNorReturnValue() {
@@ -212,7 +214,7 @@ public class InvocationHandler {
             for (TypingNode cNode : constantNodes) {
                 buildConstraint(pNode, cNode, TypingConstraint.GE, false);
             }
-            if (apiType != InterestingNodeType.SINK) {
+            if (!isSink) {
                 if (thisNode != null /* && !skipThis*/) {
                     buildConstraint(thisNode, pNode, apiConstraint, true);
                 } else if (returnValueNode != null) { // TODO remove "else" ?
@@ -220,7 +222,7 @@ public class InvocationHandler {
                 }
             }
         }
-        if (freeNodes.isEmpty() && apiType != InterestingNodeType.SINK) {
+        if (freeNodes.isEmpty() && !isSink) {
             for (TypingNode cNode : constantNodes) {
                 if (thisNode != null /* && !skipThis*/) {
                     buildConstraint(thisNode, cNode, TypingConstraint.GE, false);
@@ -230,7 +232,7 @@ public class InvocationHandler {
                 }
             }
         }
-        if (thisNode != null /*&& !skipThis*/ && returnValueNode != null && apiType != InterestingNodeType.SINK) {
+        if (thisNode != null /*&& !skipThis*/ && returnValueNode != null && !isSink) {
             buildConstraint(returnValueNode, thisNode, apiConstraint, true);
             // backward constraint had the following commented out condition
             // if (apiConstraint != TypingConstraint.GE_UNIDIR)
@@ -273,18 +275,15 @@ public class InvocationHandler {
         }
     }
 
-    private void preProcessInterestingNode() {
-        apiType = AnalysisUtil.tryRecordInterestingNode(instruction, subGraph);
+    private void preprocessPotentialSink() {
+        if (!SinkDefinitions.matchesSinkDefinition(instruction)) {
+            return;
+        }
+        isSink = true;
+        DiscoveredSink sink = new DiscoveredSink(instruction, subGraph);
+        sink.getInterestingParameters().forEach(TypingNode::markSpecial);
+        AnalysisUtil.recordSink(sink);
+
     }
 
-    private void postProcessInterestingNode() {
-        InterestingNode sink = AnalysisUtil.getLatestInterestingNode();
-        if (apiType == InterestingNodeType.SINK && sink != null) {
-            Iterator<TypingNode> sinkArgs = sink.iterateInterestingArgs();
-            while (sinkArgs.hasNext()) {
-                TypingNode t = sinkArgs.next();
-                t.markSpecial();
-            }
-        }
-    }
 }
