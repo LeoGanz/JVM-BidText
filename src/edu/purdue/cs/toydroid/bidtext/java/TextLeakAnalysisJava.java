@@ -7,7 +7,9 @@ import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
+import com.ibm.wala.types.ClassLoaderReference;
 import edu.purdue.cs.toydroid.bidtext.analysis.AnalysisUtil;
+import edu.purdue.cs.toydroid.bidtext.java.spring.AnnotationFinder;
 import edu.purdue.cs.toydroid.utils.SimpleConfig;
 import edu.purdue.cs.toydroid.utils.WalaUtil;
 import org.apache.logging.log4j.LogManager;
@@ -17,18 +19,19 @@ import java.io.File;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.StreamSupport;
 
 public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
 
     private static final Logger logger = LogManager.getLogger(TextLeakAnalysisJava.class);
     private final AtomicBoolean taskTimeout = new AtomicBoolean(false);
-    private final String appJar;
+    private final String pathToSystemUnderTest;
     private AnalysisScope scope;
     private ClassHierarchy classHierarchy;
     private Set<Entrypoint> entrypoints;
 
-    public TextLeakAnalysisJava(String appJar) {
-        this.appJar = appJar;
+    public TextLeakAnalysisJava(String pathToSystemUnderTest) {
+        this.pathToSystemUnderTest = pathToSystemUnderTest;
     }
 
     public void signalTimeout() {
@@ -46,12 +49,15 @@ public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
         String exclusionFilePath = SimpleConfig.getExclusionFile();
         logger.info("Exclusion file: " + exclusionFilePath);
         File exclusionsFile = exclusionFilePath != null ? new File(exclusionFilePath) : null;
-        scope = AnalysisScopeReader.instance.makeJavaBinaryAnalysisScope(
-                appJar, exclusionsFile);
+        scope = AnalysisScopeReader.instance.makeJavaBinaryAnalysisScope(pathToSystemUnderTest, exclusionsFile);
         classHierarchy = ClassHierarchyFactory.make(scope);
-//        System.out.println("ClassHierarchy: " + classHierarchy);
-
         WalaUtil.setClassHierarchy(classHierarchy);
+        StreamSupport.stream(classHierarchy.spliterator(), false)
+                .filter(clazz -> clazz.getClassLoader().getReference().equals(ClassLoaderReference.Application))
+                .forEach(clazz -> logger.debug("Class: " + clazz));
+
+        AnnotationFinder annotationFinder = new AnnotationFinder(classHierarchy);
+        annotationFinder.findAnnotations();
         entrypoints = EntrypointDiscovery.discover(classHierarchy);
         logger.info("Entrypoints: " + entrypoints);
     }
