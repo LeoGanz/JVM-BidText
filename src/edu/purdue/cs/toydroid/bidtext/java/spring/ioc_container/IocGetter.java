@@ -17,7 +17,8 @@ public class IocGetter extends IocMethod {
 
     static MethodReference buildMethodReference(TypeReference beanType, IocContainerClass iocClass) {
         String iocClassNameWithoutLeadingL = IocContainerClass.CLASS_NAME.substring(1);
-        String selectorStr = iocClassNameWithoutLeadingL + "." + getPlainMethodName(beanType) + "()" + beanType;
+        String selectorStr = iocClassNameWithoutLeadingL + "." + getPlainMethodName(beanType) + "()" +
+                beanType.getName().getClassName().toString();
         Selector selector = Selector.make(selectorStr);
         return MethodReference.findOrCreate(iocClass.getReference(), selector);
     }

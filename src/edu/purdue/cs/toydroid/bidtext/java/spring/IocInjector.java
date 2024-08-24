@@ -91,9 +91,10 @@ public class IocInjector {
 
         int indexOfReturnInstruction = findIndexOfReturnInstruction(initMethodEditor);
         String nameOfClassUnderInvestigation = Util.makeType(classReader.getName());
+        
+        initMethodEditor.beginPass();
         initMethodEditor.insertBefore(indexOfReturnInstruction,
                 buildPatchToWireAllFieldsViaIOC(autowiredFields, nameOfClassUnderInvestigation));
-
         initMethodEditor.applyPatches();
     }
 

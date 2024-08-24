@@ -127,7 +127,8 @@ public class AnnotationFinder {
     }
 
     public Set<IField> getAutowiredFields(String clazz) {
-        return classesWithAutowiredFields.get(clazz);
+        Set<IField> fields = classesWithAutowiredFields.get(clazz);
+        return fields == null ? Collections.emptySet() : fields;
     }
 
 }
