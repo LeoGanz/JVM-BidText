@@ -23,8 +23,8 @@ public class IocSingletonField implements IField {
         this.iocClass = iocClass;
     }
 
-    public static IocSingletonField make(Atom name, TypeReference fieldType, IocContainerClass iocClass) {
-        return new IocSingletonField(name, fieldType, iocClass);
+    public static IocSingletonField make(TypeReference fieldType, IocContainerClass iocClass) {
+        return new IocSingletonField(fieldType.getName().getClassName(), fieldType, iocClass);
     }
 
     @Override

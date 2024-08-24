@@ -47,21 +47,21 @@ public class IocContainerClass extends SyntheticClass {
         IocContainerClass iocClass = new IocContainerClass(classHierarchy, options, cache);
         iocClass.prepareClassInitializer();
         annotationFinder.getSingletonBeans()
-                .forEach(clazz -> iocClass.registerSingletonBean(clazz.getName().getClassName(), clazz.getReference()));
+                .forEach(clazz -> iocClass.registerSingletonBean(clazz.getReference()));
         annotationFinder.getPrototypeBeans()
-                .forEach(clazz -> iocClass.registerPrototypeBean(clazz.getName().getClassName(), clazz.getReference()));
+                .forEach(clazz -> iocClass.registerPrototypeBean(clazz.getReference()));
         return iocClass;
     }
 
-    private void registerSingletonBean(Atom name, TypeReference type) {
-        IocSingletonField field = IocSingletonField.make(name, type, this);
+    private void registerSingletonBean(TypeReference beanType) {
+        IocSingletonField field = IocSingletonField.make(beanType, this);
         addField(field);
         classInitializer.addInitializationForField(field.getReference());
         addMethod(IocGetterSingleton.make(field.getReference(), this, classHierarchy, options, cache));
     }
 
-    private void registerPrototypeBean(Atom name, TypeReference type) {
-        addMethod(IocGetterPrototype.make(name, type, this, classHierarchy, options, cache));
+    private void registerPrototypeBean(TypeReference beanType) {
+        addMethod(IocGetterPrototype.make(beanType, this, classHierarchy, options, cache));
     }
 
     private void prepareClassInitializer() {

@@ -5,11 +5,10 @@ import com.ibm.wala.classLoader.IField;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.shrike.shrikeCT.AnnotationsReader;
 import com.ibm.wala.types.ClassLoaderReference;
+import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.annotations.Annotation;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -20,7 +19,7 @@ public class AnnotationFinder {
     private final Set<IClass> singletonBeans = new HashSet<>();
     private final Set<IClass> prototypeBeans = new HashSet<>();
     private final Set<IClass> controllers = new HashSet<>();
-    private final Set<IField> autowiredFields = new HashSet<>();
+    private final Map<String, Set<IField>> classesWithAutowiredFields = new HashMap<>();
 
 
     public AnnotationFinder(ClassHierarchy classHierarchy) {
@@ -33,16 +32,25 @@ public class AnnotationFinder {
                 .collect(Collectors.toSet());
         for (IClass clazz : applicationClasses) {
             AnnotationCategorization categorization = categorize(clazz);
-            processCategorization(clazz, categorization);
-            autowiredFields.addAll(getAutowiredFields(clazz));
+            processClassCategorization(clazz, categorization);
+            Set<IField> autowiredFieldsOfClazz = findAutowiredFields(clazz);
+            processAutowiredFields(clazz, autowiredFieldsOfClazz);
         }
         System.out.println("Singleton Beans: " + singletonBeans);
         System.out.println("Prototype Beans: " + prototypeBeans);
         System.out.println("Controllers: " + controllers);
-        System.out.println("Autowired Fields: " + autowiredFields);
+        System.out.println("Autowired Fields: " + classesWithAutowiredFields);
     }
 
-    private void processCategorization(IClass clazz, AnnotationCategorization categorization) {
+    private void processAutowiredFields(IClass clazz, Set<IField> autowiredFieldsOfClazz) {
+        if (!autowiredFieldsOfClazz.isEmpty()) {
+            TypeName clazzName = clazz.getName();
+            String jvmClassName = clazzName.toString().substring(1); // remove leading 'L'
+            classesWithAutowiredFields.put(jvmClassName, autowiredFieldsOfClazz);
+        }
+    }
+
+    private void processClassCategorization(IClass clazz, AnnotationCategorization categorization) {
         if (categorization.isBean()) {
             if (categorization.isPrototype()) {
                 prototypeBeans.add(clazz);
@@ -85,7 +93,7 @@ public class AnnotationFinder {
         return categorization;
     }
 
-    private Set<IField> getAutowiredFields(IClass clazz) {
+    private Set<IField> findAutowiredFields(IClass clazz) {
         return clazz.getAllInstanceFields().stream()
                 .filter(this::fieldIsAutowired)
                 .collect(Collectors.toSet());
@@ -118,8 +126,8 @@ public class AnnotationFinder {
         return controllers;
     }
 
-    public Set<IField> getAutowiredFields() {
-        return autowiredFields;
+    public Set<IField> getAutowiredFields(String clazz) {
+        return classesWithAutowiredFields.get(clazz);
     }
 
 }

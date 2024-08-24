@@ -15,10 +15,9 @@ public class IocGetterSingleton extends IocGetter {
     }
 
     public static IocGetterSingleton make(FieldReference staticFieldReference, IocContainerClass iocClass,
-                                          IClassHierarchy cha,
-                                          AnalysisOptions options, IAnalysisCacheView cache) {
+                                          IClassHierarchy cha, AnalysisOptions options, IAnalysisCacheView cache) {
         MethodReference methodReference =
-                buildMethodReference(staticFieldReference.getName(), staticFieldReference.getFieldType(), iocClass);
+                buildMethodReference(staticFieldReference.getFieldType(), iocClass);
         IocGetterSingleton method = new IocGetterSingleton(methodReference, iocClass, cha, options, cache);
         int valueNumber = method.addGetStatic(staticFieldReference);
         method.addReturn(valueNumber, staticFieldReference.getFieldType().isPrimitiveType());
