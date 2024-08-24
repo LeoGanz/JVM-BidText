@@ -5,12 +5,14 @@ import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
+import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.shrike.shrikeBT.*;
 import com.ibm.wala.shrike.shrikeBT.shrikeCT.ClassInstrumenter;
 import com.ibm.wala.shrike.shrikeBT.shrikeCT.OfflineInstrumenter;
 import com.ibm.wala.shrike.shrikeCT.ClassReader;
 import com.ibm.wala.shrike.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.types.MethodReference;
+import edu.purdue.cs.toydroid.bidtext.java.CustomClassHierarchyFactory;
 import edu.purdue.cs.toydroid.bidtext.java.spring.ioc_container.IocContainerClass;
 import edu.purdue.cs.toydroid.bidtext.java.spring.ioc_container.IocGetter;
 
@@ -22,16 +24,34 @@ public class IocInjector {
 
     private static final String INSTRUMENTED_JAR_FILE_NAME = "bidtext-simulated-ioc.jar";
 
-    public static void doInjection(String pathToSystemUnderTest, ClassHierarchy classHierarchy, AnalysisScope scope,
-                                   AnalysisCache cache) throws InvalidClassFileException, IOException {
+    private static String getOutputJarPath() {
+        String tmpDir = System.getProperty("java.io.tmpdir");
+        return tmpDir + File.separator + INSTRUMENTED_JAR_FILE_NAME;
+    }
+
+    public static ClassHierarchy buildAdaptedClassHierarchy(String pathToSystemUnderTest, ClassHierarchy classHierarchy,
+                                                            AnalysisScope scope, AnalysisCache cache) throws
+            InvalidClassFileException, IOException, ClassHierarchyException {
         AnnotationFinder annotationFinder = new AnnotationFinder(classHierarchy);
         annotationFinder.processClasses();
 
-        IocContainerClass springIOCModel =
-                IocContainerClass.make(annotationFinder, classHierarchy, new AnalysisOptions(scope, Set.of()), cache);
-        classHierarchy.addClass(springIOCModel);
-
         initializeAutowiredFields(pathToSystemUnderTest, annotationFinder);
+
+        return buildAdaptedClassHierarchyFromInstrumentedJarFile(classHierarchy, scope, cache);
+    }
+
+    private static ClassHierarchy buildAdaptedClassHierarchyFromInstrumentedJarFile(ClassHierarchy classHierarchy,
+                                                                                    AnalysisScope scope,
+                                                                                    AnalysisCache cache) throws
+            IOException, ClassHierarchyException, InvalidClassFileException {
+        ClassHierarchy adjustedClassHierarchy = CustomClassHierarchyFactory.make(getOutputJarPath(), cache, false);
+        AnnotationFinder annotationFinder = new AnnotationFinder(classHierarchy);
+        annotationFinder.processClasses();
+        IocContainerClass springIOCModel =
+                IocContainerClass.make(annotationFinder, adjustedClassHierarchy, new AnalysisOptions(scope, Set.of()),
+                        cache);
+        adjustedClassHierarchy.addClass(springIOCModel);
+        return adjustedClassHierarchy;
     }
 
     private static void initializeAutowiredFields(String pathToSystemUnderTest,
@@ -41,8 +61,7 @@ public class IocInjector {
         OfflineInstrumenter offlineInstrumenter = new OfflineInstrumenter();
         offlineInstrumenter.setPassUnmodifiedClasses(true);
         offlineInstrumenter.addInputElement(new File(pathToSystemUnderTest), pathToSystemUnderTest);
-        String tmpDir = System.getProperty("java.io.tmpdir");
-        String outputJar = tmpDir + File.separator + INSTRUMENTED_JAR_FILE_NAME;
+        String outputJar = getOutputJarPath();
         offlineInstrumenter.setOutputJar(new File(outputJar));
         offlineInstrumenter.beginTraversal();
 
@@ -109,8 +128,7 @@ public class IocInjector {
                     InvokeInstruction invocationOfIocGetter = buildInvocationOfGetter(autowiredField);
                     editorOutput.emit(invocationOfIocGetter);
 
-                    PutInstruction storeField =
-                            buildStoreField(autowiredField, nameOfClassUnderInvestigation);
+                    PutInstruction storeField = buildStoreField(autowiredField, nameOfClassUnderInvestigation);
                     editorOutput.emit(storeField);
                 }
             }
