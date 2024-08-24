@@ -1,5 +1,6 @@
 package edu.purdue.cs.toydroid.bidtext.java;
 
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.core.util.config.AnalysisScopeReader;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisCacheImpl;
@@ -19,6 +20,7 @@ import java.io.File;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
@@ -27,6 +29,7 @@ public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
     private final AtomicBoolean taskTimeout = new AtomicBoolean(false);
     private final String pathToSystemUnderTest;
     private AnalysisScope scope;
+    private AnalysisCache cache;
     private ClassHierarchy classHierarchy;
     private Set<Entrypoint> entrypoints;
 
@@ -50,20 +53,28 @@ public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
         logger.info("Exclusion file: " + exclusionFilePath);
         File exclusionsFile = exclusionFilePath != null ? new File(exclusionFilePath) : null;
         scope = AnalysisScopeReader.instance.makeJavaBinaryAnalysisScope(pathToSystemUnderTest, exclusionsFile);
+        cache = new AnalysisCacheImpl(); //TODO check
         classHierarchy = ClassHierarchyFactory.make(scope);
         WalaUtil.setClassHierarchy(classHierarchy);
-        StreamSupport.stream(classHierarchy.spliterator(), false)
+
+        Set<IClass> appClasses = StreamSupport.stream(classHierarchy.spliterator(), false)
                 .filter(clazz -> clazz.getClassLoader().getReference().equals(ClassLoaderReference.Application))
-                .forEach(clazz -> logger.debug("Class: " + clazz));
+                .collect(Collectors.toSet());
+        appClasses.forEach(clazz -> {
+            logger.debug("App class: " + clazz.getName());
+            if (clazz.getName().toString().contains("IOC")) {
+                clazz.getDeclaredMethods().forEach(method -> logger.debug("    Method: " + method.getSignature()));
+            }
+        });
 
         AnnotationFinder annotationFinder = new AnnotationFinder(classHierarchy);
-        annotationFinder.findAnnotations();
+
+        annotationFinder.processClasses();
         entrypoints = EntrypointDiscovery.discover(classHierarchy);
         logger.info("Entrypoints: " + entrypoints);
     }
 
     private void analyze() throws Exception {
-        AnalysisCache cache = new AnalysisCacheImpl(); //TODO check
         int entrypointCounter = 1;
 
         for (Entrypoint entrypoint : entrypoints) {

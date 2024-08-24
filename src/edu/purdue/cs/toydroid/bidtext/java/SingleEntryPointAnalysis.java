@@ -101,7 +101,7 @@ public class SingleEntryPointAnalysis {
             CallGraphBuilderCancelException {
         logger.info(" * Build CallGraph");
         cg = cgBuilder.makeCallGraph(options, null);
-//        logger.debug("CallGraph: " + cg);
+        logger.debug("CallGraph: " + cg);
         logger.info(" * CG size: {}", cg.getNumberOfNodes());
         // dumpCG(cg);
 
