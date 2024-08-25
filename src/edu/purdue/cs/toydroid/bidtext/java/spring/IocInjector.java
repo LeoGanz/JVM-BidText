@@ -29,38 +29,41 @@ public class IocInjector {
         return tmpDir + File.separator + INSTRUMENTED_JAR_FILE_NAME;
     }
 
-    public static ClassHierarchy buildAdaptedClassHierarchy(String pathToSystemUnderTest, ClassHierarchy classHierarchy,
-                                                            AnalysisScope scope, AnalysisCache cache) throws
-            InvalidClassFileException, IOException, ClassHierarchyException {
+    public static ClassHierarchy buildAdaptedClassHierarchy(String pathToJarOrClassesRootFolder,
+                                                            ClassHierarchy classHierarchy, AnalysisScope scope,
+                                                            AnalysisCache cache) throws InvalidClassFileException,
+            IOException, ClassHierarchyException {
         AnnotationFinder annotationFinder = new AnnotationFinder(classHierarchy);
         annotationFinder.processClasses();
 
-        initializeAutowiredFields(pathToSystemUnderTest, annotationFinder);
+        initializeAutowiredFields(pathToJarOrClassesRootFolder, annotationFinder);
 
-        return buildAdaptedClassHierarchyFromInstrumentedJarFile(classHierarchy, scope, cache);
+        return buildAdaptedClassHierarchyFromInstrumentedJarFile(scope, cache);
     }
 
-    private static ClassHierarchy buildAdaptedClassHierarchyFromInstrumentedJarFile(ClassHierarchy classHierarchy,
-                                                                                    AnalysisScope scope,
+    private static ClassHierarchy buildAdaptedClassHierarchyFromInstrumentedJarFile(AnalysisScope scope,
                                                                                     AnalysisCache cache) throws
             IOException, ClassHierarchyException, InvalidClassFileException {
         ClassHierarchy adjustedClassHierarchy = CustomClassHierarchyFactory.make(getOutputJarPath(), cache, false);
-        AnnotationFinder annotationFinder = new AnnotationFinder(classHierarchy);
+        AnnotationFinder annotationFinder = new AnnotationFinder(adjustedClassHierarchy);
         annotationFinder.processClasses();
         IocContainerClass springIOCModel =
                 IocContainerClass.make(annotationFinder, adjustedClassHierarchy, new AnalysisOptions(scope, Set.of()),
                         cache);
-        adjustedClassHierarchy.addClass(springIOCModel);
+        boolean addSuccessful = adjustedClassHierarchy.addClass(springIOCModel);
+        if (!addSuccessful) {
+            throw new RuntimeException("Failed to add Spring IOC model to class hierarchy");
+        }
         return adjustedClassHierarchy;
     }
 
-    private static void initializeAutowiredFields(String pathToSystemUnderTest,
+    private static void initializeAutowiredFields(String pathToJarOrClassesRootFolder,
                                                   AnnotationFinder annotationFinder) throws IOException,
             InvalidClassFileException {
 
         OfflineInstrumenter offlineInstrumenter = new OfflineInstrumenter();
         offlineInstrumenter.setPassUnmodifiedClasses(true);
-        offlineInstrumenter.addInputElement(new File(pathToSystemUnderTest), pathToSystemUnderTest);
+        offlineInstrumenter.addInputElement(new File(pathToJarOrClassesRootFolder), pathToJarOrClassesRootFolder);
         String outputJar = getOutputJarPath();
         offlineInstrumenter.setOutputJar(new File(outputJar));
         offlineInstrumenter.beginTraversal();
@@ -91,7 +94,7 @@ public class IocInjector {
 
         int indexOfReturnInstruction = findIndexOfReturnInstruction(initMethodEditor);
         String nameOfClassUnderInvestigation = Util.makeType(classReader.getName());
-        
+
         initMethodEditor.beginPass();
         initMethodEditor.insertBefore(indexOfReturnInstruction,
                 buildPatchToWireAllFieldsViaIOC(autowiredFields, nameOfClassUnderInvestigation));

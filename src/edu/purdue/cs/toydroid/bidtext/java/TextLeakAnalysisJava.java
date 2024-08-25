@@ -15,15 +15,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
 
+    // if != null, all other entrypoints are skipped
+    private static final String DEBUG___ONLY_ANALYZE_THIS_ENTRYPOINT = null;
+
     private static final Logger logger = LogManager.getLogger(TextLeakAnalysisJava.class);
     private final AtomicBoolean taskTimeout = new AtomicBoolean(false);
-    private final String pathToSystemUnderTest;
+    private final String pathToJarOrClassesRootFolder;
     private AnalysisCache cache;
     private ClassHierarchy classHierarchy;
     private Set<Entrypoint> entrypoints;
 
-    public TextLeakAnalysisJava(String pathToSystemUnderTest) {
-        this.pathToSystemUnderTest = pathToSystemUnderTest;
+    public TextLeakAnalysisJava(String pathToJarOrClassesRootFolder) {
+        this.pathToJarOrClassesRootFolder = pathToJarOrClassesRootFolder;
     }
 
     public void signalTimeout() {
@@ -39,7 +42,7 @@ public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
 
     private void initialize() throws Exception {
         cache = new AnalysisCacheImpl(); //TODO check
-        classHierarchy = CustomClassHierarchyFactory.make(pathToSystemUnderTest, cache);
+        classHierarchy = CustomClassHierarchyFactory.make(pathToJarOrClassesRootFolder, cache);
         WalaUtil.setClassHierarchy(classHierarchy);
 
         entrypoints = EntrypointDiscovery.discover(classHierarchy);
@@ -50,6 +53,10 @@ public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
         int entrypointCounter = 1;
 
         for (Entrypoint entrypoint : entrypoints) {
+            if (DEBUG___ONLY_ANALYZE_THIS_ENTRYPOINT != null &&
+                    !entrypoint.getMethod().getName().toString().equals(DEBUG___ONLY_ANALYZE_THIS_ENTRYPOINT)) {
+                continue;
+            }
             String entrypointSignature = entrypoint.getMethod().getSignature();
             logger.info("Process entrypoint ({}/{}) {}", entrypointCounter, entrypoints.size(), entrypointSignature);
             entrypointCounter++;

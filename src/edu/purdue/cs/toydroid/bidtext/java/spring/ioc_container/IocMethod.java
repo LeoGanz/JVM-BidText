@@ -8,7 +8,7 @@ import com.ibm.wala.types.MethodReference;
 
 /**
  * IOCMethods are SyntheticMethods. The fact that they extend AbstractRootMethod is a bit of a hack but saves us from
- * having to copy a lot statement creation utility of code.
+ * having to copy a lot of statement creation utility of code.
  */
 public class IocMethod extends AbstractRootMethod {
 

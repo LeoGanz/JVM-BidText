@@ -25,24 +25,25 @@ public class CustomClassHierarchyFactory {
     private static final Logger logger = LogManager.getLogger(CustomClassHierarchyFactory.class);
     private static final boolean DO_SPRING_PREPROCESSING_DEFAULT = true;
 
-    public static ClassHierarchy make(String pathToSystemUnderTest, AnalysisCache cache) throws IOException,
+    public static ClassHierarchy make(String pathToJarOrClassesRootFolder, AnalysisCache cache) throws IOException,
             ClassHierarchyException, InvalidClassFileException {
-        return make(pathToSystemUnderTest, cache, DO_SPRING_PREPROCESSING_DEFAULT);
+        return make(pathToJarOrClassesRootFolder, cache, DO_SPRING_PREPROCESSING_DEFAULT);
     }
 
-    public static ClassHierarchy make(String pathToSystemUnderTest, AnalysisCache cache,
+    public static ClassHierarchy make(String pathToJarOrClassesRootFolder, AnalysisCache cache,
                                       boolean doSpringProcessing) throws IOException, ClassHierarchyException,
             InvalidClassFileException {
         String exclusionFilePath = SimpleConfig.getExclusionFile();
         logger.info("Exclusion file: " + exclusionFilePath);
         File exclusionsFile = exclusionFilePath != null ? new File(exclusionFilePath) : null;
         AnalysisScope scope =
-                AnalysisScopeReader.instance.makeJavaBinaryAnalysisScope(pathToSystemUnderTest, exclusionsFile);
+                AnalysisScopeReader.instance.makeJavaBinaryAnalysisScope(pathToJarOrClassesRootFolder, exclusionsFile);
         ClassHierarchy basicClassHierarchy = ClassHierarchyFactory.make(scope);
-//        printDebugInfo(basicClassHierarchy);
+        printDebugInfo(basicClassHierarchy);
 
         if (doSpringProcessing) {
-            return IocInjector.buildAdaptedClassHierarchy(pathToSystemUnderTest, basicClassHierarchy, scope, cache);
+            return IocInjector.buildAdaptedClassHierarchy(pathToJarOrClassesRootFolder, basicClassHierarchy, scope,
+                    cache);
         } else {
             return basicClassHierarchy;
         }
@@ -54,7 +55,7 @@ public class CustomClassHierarchyFactory {
                 .collect(Collectors.toSet());
         appClasses.forEach(clazz -> {
             logger.debug("App class: " + clazz.getName());
-            if (clazz.getName().toString().contains("IOC")) {
+            if (clazz.getName().toString().contains("SpringIOCModel")) {
                 clazz.getDeclaredMethods().forEach(method -> logger.debug("    Method: " + method.getSignature()));
             }
         });

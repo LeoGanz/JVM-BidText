@@ -7,14 +7,20 @@ import java.util.concurrent.*;
 
 public class Main {
     private static final long DEFAULT_TIMEOUT = 20;
-    private static long timeout = DEFAULT_TIMEOUT;
     private static final Logger logger = LogManager.getLogger(Main.class);
+    private static long timeout = DEFAULT_TIMEOUT;
 
+    /**
+     * @param args first and only argument should be the path to the system under test. The path can be a path to a
+     *             jar file or a folder that is the root of the classes of the system under test, i.e. the folder that
+     *             contains subfolders for all the packages specified in class files - do not go up the folder hierarchy
+     *             even if the root folder only contains a single subfolder.
+     */
     public static void main(String[] args) throws Throwable {
         long analysisStart = System.currentTimeMillis();
-        String inputFile;
+        String pathToJarOrClassesRootFolder;
         if (args.length == 1) {
-            inputFile = args[0];
+            pathToJarOrClassesRootFolder = args[0];
         } else {
             throw new IllegalArgumentException(
                     "Please specify path to the system under test as the first and only argument.");
@@ -33,7 +39,7 @@ public class Main {
         }
         logger.info("Set TIMEOUT as {} minutes.", timeout);
         try {
-            doAnalysis(inputFile);
+            doAnalysis(pathToJarOrClassesRootFolder);
         } catch (Throwable e) {
             logger.error("Crashed: {}", e.getMessage());
             throw e;
@@ -61,9 +67,9 @@ public class Main {
         logger.info("Total Memory: {} [{} bytes]", mem, memUsed);
     }
 
-    public static void doAnalysis(String sutPath) throws Throwable {
+    public static void doAnalysis(String pathToJarOrClassesRootFolder) throws Throwable {
         logger.info("Start Analysis...");
-        TextLeakAnalysisJava analysis = new TextLeakAnalysisJava(sutPath);
+        TextLeakAnalysisJava analysis = new TextLeakAnalysisJava(pathToJarOrClassesRootFolder);
         try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
             Future<TextLeakAnalysisJava> future = executor.submit(analysis);
             try {

@@ -102,7 +102,7 @@ public class IocContainerClass extends SyntheticClass {
 
     @Override
     public IClass getSuperclass() throws UnsupportedOperationException {
-        return getClassHierarchy().getRootClass();
+        return getClassHierarchy().lookupClass(getClassLoader().getLanguage().getRootType());
     }
 
     @Override
