@@ -540,7 +540,7 @@ public class TypingGraphUtil {
 
     private static void handleSSAInvokeAPI(CGNode cgNode, Statement stmt, SSAAbstractInvokeInstruction inst,
                                            TypingSubGraph sg) {
-        new InvocationHandler(currentTypingGraph, sg, cgNode, stmt, inst).handle();
+        new ApiInvocationHandler(currentTypingGraph, sg, cgNode, stmt, inst).handle();
     }
 
     private static void handleSSAPhi(PhiStatement stmt, SSAPhiInstruction inst, TypingSubGraph sg) {

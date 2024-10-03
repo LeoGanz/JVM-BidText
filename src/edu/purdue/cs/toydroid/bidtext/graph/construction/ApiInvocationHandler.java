@@ -19,8 +19,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-public class InvocationHandler {
-    private static final Logger logger = LogManager.getLogger(InvocationHandler.class);
+public class ApiInvocationHandler {
+    private static final Logger logger = LogManager.getLogger(ApiInvocationHandler.class);
 
     private static final List<String> namesOfMethodsRequiringUnidirectionalPropagation = new ArrayList<>() {{
         add("getInputStream");
@@ -40,8 +40,8 @@ public class InvocationHandler {
     private TypingNode returnValueNode;
     private TypingNode thisNode;
 
-    public InvocationHandler(TypingGraph typingGraph, TypingSubGraph subGraph, CGNode cgNode, Statement statement,
-                             SSAAbstractInvokeInstruction instruction) {
+    public ApiInvocationHandler(TypingGraph typingGraph, TypingSubGraph subGraph, CGNode cgNode, Statement statement,
+                                SSAAbstractInvokeInstruction instruction) {
         this.typingGraph = typingGraph;
         this.subGraph = subGraph;
         this.cgNode = cgNode;
@@ -50,18 +50,29 @@ public class InvocationHandler {
     }
 
     public void handle() {
+        // Check if this invocation is a sink
         preprocessPotentialSink();
+
         if (hasNeitherParametersNorReturnValue()) {
+            // No propagation needed
             return;
         }
-        initialize();
+
+        // Prepare propagation handling by categorising parameters
+        // as constants and non-constants
+        analyzeMethodParameters();
         if (isStringBuilderInvocation()) {
+            // Special handling for StringBuilder methods
+            // Texts used for typing are constructed over multiple calls
             processStringBuilder();
         } else if (matchesPropagationRule()) {
-            handleAPIByRule();
+            // Set up rule-based handling for propagation through special API methods
+            handlePropagationByRule();
         } else if (matchesSourceCorrelationRule()) {
+            // Introduction of artificial source nodes based on API method signature
             handleAPISourceByRule();
         } else {
+            // Set up generic propagation for all other invocations
             handleGenericInvocation();
         }
     }
@@ -70,7 +81,7 @@ public class InvocationHandler {
         return instruction.getNumberOfPositionalParameters() == 0 && !instruction.hasDef();
     }
 
-    private void initialize() {
+    private void analyzeMethodParameters() {
         freeNodes = new ArrayList<>();
         constantNodes = new ArrayList<>();
         // non-static methods have an implicit "this" parameter as the first parameter
@@ -164,7 +175,7 @@ public class InvocationHandler {
         return !apiRules.isEmpty();
     }
 
-    private void handleAPIByRule() {
+    private void handlePropagationByRule() {
         String sig = WalaUtil.getSignature(instruction);
         Set<APIPropagationRules.Rule> rules = APIPropagationRules.getRules(sig);
         for (APIPropagationRules.Rule rule : rules) {
