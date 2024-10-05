@@ -1,17 +1,13 @@
 package edu.purdue.cs.toydroid.bidtext.analysis;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class SensitiveTerms implements Iterable<SensitiveTerms.SensitiveTerm> {
 
+    private static final boolean ACCEPT_ONLY_COMPLETE_WORDS = false;
     public static final String TERM_FILE = "res/SensitiveTerms.txt";
     private static final String FORBIDDEN_PREFIX = "class.{0,25}";
     private static final String FORBIDDEN_SUFFIX = "_?type";
@@ -68,8 +64,21 @@ public class SensitiveTerms implements Iterable<SensitiveTerms.SensitiveTerm> {
     }
 
     private void addTerm(String tag, StringBuilder regex) {
-        String pattern = "(?<!^(" + FORBIDDEN_PREFIX + "))(" + regex.append(")(?!(" + FORBIDDEN_SUFFIX + "))");
-        terms.add(new SensitiveTerm(tag, Pattern.compile(pattern)));
+        StringBuilder pattern = new StringBuilder();
+        if (ACCEPT_ONLY_COMPLETE_WORDS) {
+            pattern.append("\\b");
+        }
+        if (FORBIDDEN_PREFIX != null) {
+            pattern.append("(?<!^(").append(FORBIDDEN_PREFIX).append("))");
+        }
+        pattern.append("(").append(regex).append(")");
+        if (FORBIDDEN_SUFFIX != null) {
+            pattern.append("(?!(").append(FORBIDDEN_SUFFIX).append("))");
+        }
+        if (ACCEPT_ONLY_COMPLETE_WORDS) {
+            pattern.append("\\b");
+        }
+        terms.add(new SensitiveTerm(tag, Pattern.compile(pattern.toString())));
     }
 
     @Override
@@ -77,7 +86,5 @@ public class SensitiveTerms implements Iterable<SensitiveTerms.SensitiveTerm> {
         return terms.iterator();
     }
 
-    public record SensitiveTerm(String tag, Pattern pattern) {
-    }
+    public record SensitiveTerm(String tag, Pattern pattern) {}
 }
-

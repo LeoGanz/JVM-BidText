@@ -2,7 +2,6 @@ package edu.purdue.cs.toydroid.bidtext.analysis;
 
 import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
-import edu.purdue.cs.toydroid.bidtext.android.util.ResourceUtil;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingRecord;
@@ -91,7 +90,7 @@ public class AnalysisUtil {
 
 
         if (DUMP_VERBOSE) {
-            printCollectedTexts(writer, textAnalysis.getSensitiveStrings(), codeTexts.keySet());
+            printCollectedTexts(writer, textAnalysis.getSensitivityIndicators(), codeTexts.keySet());
         }
 
         printPaths(sink, textAnalysis, writer);
@@ -114,17 +113,16 @@ public class AnalysisUtil {
         }
     }
 
-    private static void printCollectedTexts(PrintWriter writer, Set<String> sensitiveTexts, Set<String> nonSensitiveTexts){
+    private static void printCollectedTexts(PrintWriter writer, Set<String> sensitiveKeywords, Set<String> nonSensitiveTexts){
         writer.println();
         writer.println("The following texts reached the sink:");
-        writer.println("  sensitive texts:");
-        for (String t : sensitiveTexts) {
-            writer.print("   - ");
+        for (String t : nonSensitiveTexts) {
+            writer.print(" - ");
             writer.println(t);
         }
-        writer.println("  non-sensitive texts:");
-        for (String t : nonSensitiveTexts) {
-            writer.print("   - ");
+        writer.println("In these texts, the following sensitivity indicators (keywords in a non-negated context) appeared:");
+        for (String t : sensitiveKeywords) {
+            writer.print(" - ");
             writer.println(t);
         }
     }
