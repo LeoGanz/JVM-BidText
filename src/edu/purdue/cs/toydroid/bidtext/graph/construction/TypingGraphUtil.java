@@ -14,14 +14,15 @@ import com.ibm.wala.ipa.slicer.Statement.Kind;
 import com.ibm.wala.ssa.*;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.util.graph.Graph;
-import edu.purdue.cs.toydroid.bidtext.android.TextLeak;
 import edu.purdue.cs.toydroid.bidtext.graph.*;
 import edu.purdue.cs.toydroid.bidtext.graph.propagation.Propagator;
+import edu.purdue.cs.toydroid.bidtext.java.TextLeakAnalysisJava;
 import edu.purdue.cs.toydroid.utils.SimpleCounter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TypingGraphUtil {
     private static final Logger logger = LogManager.getLogger(TypingGraphUtil.class);
@@ -48,7 +49,7 @@ public class TypingGraphUtil {
         }
     }
 
-    public static void buildTypingGraph(Entrypoint ep, CallGraph cg, Graph<Statement> sdg) {
+    public static void buildTypingGraph(Entrypoint ep, CallGraph cg, Graph<Statement> sdg, AtomicBoolean timeout) {
         TypingGraph graph = new TypingGraph(ep);
         entry2Graph.put(ep, graph);
         currentTypingGraph = graph;
@@ -78,7 +79,7 @@ public class TypingGraphUtil {
 //            }
             idx++;
             buildTypingGraphForStmt(cg, sdg, stmt, visitedStatementCount);
-            if (TextLeak.taskTimeout) {
+            if (timeout.get()) {
                 break;
             }
         }

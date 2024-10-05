@@ -93,7 +93,7 @@ public class SingleEntryPointAnalysis {
         // logger.info(" * Empty SDG. No interesting stmt found.");
         // } else {
         logger.info(" * Build TypingGraph");
-        TypingGraphUtil.buildTypingGraph(entrypoint, cg, graph);
+        TypingGraphUtil.buildTypingGraph(entrypoint, cg, graph, timeout);
         // }
     }
 
