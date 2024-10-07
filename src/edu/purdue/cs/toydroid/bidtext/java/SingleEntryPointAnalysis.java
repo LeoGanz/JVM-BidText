@@ -35,8 +35,6 @@ public class SingleEntryPointAnalysis {
     private final AtomicBoolean timeout;
     private final Entrypoint entrypoint;
     private CallGraph cg;
-    private SDG<InstanceKey> sdg;
-    private Graph<Statement> graph;
 
     public SingleEntryPointAnalysis(Entrypoint ep, AnalysisScope scope, ClassHierarchy classHierarchy,
                                     AnalysisCache cache, AtomicBoolean timeout) throws
@@ -57,61 +55,42 @@ public class SingleEntryPointAnalysis {
             return;
         }
         SSAPropagationCallGraphBuilder cgBuilder = Util.makeVanillaNCFABuilder(1, options, cache, classHierarchy);
-        buildSDG(options, cgBuilder);
-        int numberOfNodesInSDG = sdg.getNumberOfNodes();
-        if (numberOfNodesInSDG > THRESHOLD_IGNORE) {
-            logger.warn(" * Too big SDG ({}). Ignore it.", numberOfNodesInSDG);
+        SDG<InstanceKey> sdg = buildSDG(options, cgBuilder);
+        if (sdg.getNumberOfNodes() > THRESHOLD_IGNORE) {
+            logger.warn(" * Too big SDG ({}). Ignore it.", sdg.getNumberOfNodes());
             return;
-        } else if (numberOfNodesInSDG > THRESHOLD_CONTEXT_INSENSITIVE) {
-            logger.warn(" * Too big SDG ({}). Use context-insensitive builder.", numberOfNodesInSDG);
+        } else if (sdg.getNumberOfNodes() > THRESHOLD_CONTEXT_INSENSITIVE) {
+            logger.warn(" * Too big SDG ({}). Use context-insensitive builder.", sdg.getNumberOfNodes());
             if (timeout.get()) {
                 return;
             }
             cgBuilder = Util.makeVanillaZeroOneCFABuilder(Language.JAVA, options, cache, classHierarchy);
-            buildSDG(options, cgBuilder);
+            sdg = buildSDG(options, cgBuilder);
         }
 
         if (timeout.get()) {
             return;
         }
 
-        pruneSDG();
+        Graph<Statement> prunedSdg = pruneSDG(sdg);
 
-//        dumpSDG();
-        // if (Main.DEBUG) {
-        // DotUtil.dotify(g, WalaUtil.makeNodeDecorator(),
-        // entrypoint.getMethod().getName().toString() + ".dot", null,
-        // null);
-        // }
-//			 SDGCache sdgCache = new SDGCache(entrypoint);
-//			 sdgCache.buildCache(g, cha);
-//			 SimplifiedSDG simSDG = SimplifiedSDG.simplify(g, sdgCache);
-        // DotUtil.dotify(simSDG, WalaUtil.makeNodeDecorator(),
-        // entrypoint.getMethod().getName().toString() + ".s.dot",
-        // null, null);
-        // if (simSDG == null) {
-        // logger.info(" * Empty SDG. No interesting stmt found.");
-        // } else {
         logger.info(" * Build TypingGraph");
-        TypingGraphUtil.buildTypingGraph(entrypoint, cg, graph, timeout);
-        // }
+        TypingGraphUtil.buildTypingGraph(entrypoint, prunedSdg, cg.getFakeRootNode(), timeout);
     }
 
-    private void buildSDG(AnalysisOptions options, SSAPropagationCallGraphBuilder cgBuilder) throws
+    private SDG<InstanceKey> buildSDG(AnalysisOptions options, SSAPropagationCallGraphBuilder cgBuilder) throws
             CallGraphBuilderCancelException {
         logger.info(" * Build CallGraph");
         cg = cgBuilder.makeCallGraph(options, null);
-//        logger.debug("CallGraph: " + cg);
-        logger.info(" * CG size: {}", cg.getNumberOfNodes());
-        // dumpCG(cg);
-
+        logger.info(" * CG size: {}", CallGraphStats.getStats(cg));
         logger.info(" * Build SDG");
-        sdg = new SDG<>(cg, cgBuilder.getPointerAnalysis(), Slicer.DataDependenceOptions.NO_BASE_NO_EXCEPTIONS,
+        return new SDG<>(cg, cgBuilder.getPointerAnalysis(), Slicer.DataDependenceOptions.NO_BASE_NO_EXCEPTIONS,
                 Slicer.ControlDependenceOptions.NONE);
     }
 
-    private void pruneSDG() {
+    private Graph<Statement> pruneSDG(Graph<Statement> sdg) {
         logger.info(" * SDG size before pruning: {}", sdg.getNumberOfNodes());
+//        dumpSDG(sdg);
         Graph<Statement> prunedSdg = GraphSlicer.prune(sdg, t -> {
             Statement.Kind k = t.getKind();
             /*
@@ -177,10 +156,11 @@ public class SingleEntryPointAnalysis {
             return true;
         });
         logger.info(" * SDG size after pruning: {}", prunedSdg.getNumberOfNodes());
-        graph = prunedSdg;
+        dumpSDG(prunedSdg);
+        return prunedSdg;
     }
 
-    private void dumpSDG() {
+    private void dumpSDG(Graph<Statement> graph) {
         Map<CGNode, Long> occurrencesOfNodes =
                 graph.stream().collect(Collectors.groupingBy(Statement::getNode, Collectors.counting()));
         logger.debug("************** SDG DUMP START ****************");

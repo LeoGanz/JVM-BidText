@@ -2,7 +2,6 @@ package edu.purdue.cs.toydroid.bidtext.graph.construction;
 
 import com.ibm.wala.analysis.stackMachine.AbstractIntStackMachine;
 import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.StaticFieldKey;
@@ -16,7 +15,6 @@ import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.util.graph.Graph;
 import edu.purdue.cs.toydroid.bidtext.graph.*;
 import edu.purdue.cs.toydroid.bidtext.graph.propagation.Propagator;
-import edu.purdue.cs.toydroid.bidtext.java.TextLeakAnalysisJava;
 import edu.purdue.cs.toydroid.utils.SimpleCounter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,6 +28,7 @@ public class TypingGraphUtil {
     private static final Map<PointerKey, TypingNode> sFieldHeaps;
     public static Map<Entrypoint, TypingGraph> entry2Graph;
     private static TypingGraph currentTypingGraph;
+    private static CGNode fakeRootNode;
 
     static {
         entry2Graph = new HashMap<>();
@@ -49,10 +48,12 @@ public class TypingGraphUtil {
         }
     }
 
-    public static void buildTypingGraph(Entrypoint ep, CallGraph cg, Graph<Statement> sdg, AtomicBoolean timeout) {
+    public static void buildTypingGraph(Entrypoint ep, Graph<Statement> sdg, CGNode fakeRootNode, AtomicBoolean timeout) {
         TypingGraph graph = new TypingGraph(ep);
         entry2Graph.put(ep, graph);
         currentTypingGraph = graph;
+        TypingGraphUtil.fakeRootNode = fakeRootNode;
+
         logger.info("   - Visit SDG ");
         Map<Statement, SimpleCounter> visitedStatementCount = new HashMap<>();
         int idx = 0;
@@ -78,7 +79,7 @@ public class TypingGraphUtil {
 //                }
 //            }
             idx++;
-            buildTypingGraphForStmt(cg, sdg, stmt, visitedStatementCount);
+            buildTypingGraphForStmt(sdg, stmt, visitedStatementCount);
             if (timeout.get()) {
                 break;
             }
@@ -118,7 +119,7 @@ public class TypingGraphUtil {
                 currentTypingGraph.getNode(simpleGraphNode.nodeId()), record));
     }
 
-    private static void buildTypingGraphForStmt(CallGraph cg, Graph<Statement> sdg, Statement stmt,
+    private static void buildTypingGraphForStmt(Graph<Statement> sdg, Statement stmt,
                                                 Map<Statement, SimpleCounter> visitedStatementCount) {
         // only scan top level stmt
         if (sdg.getPredNodeCount(stmt) != 0
@@ -130,15 +131,15 @@ public class TypingGraphUtil {
         worklist.add(stmt);
         while (!worklist.isEmpty()) {
             ConstructionWorklist.Item item = worklist.removeFirst();
-            buildTypingGraphForStmtBFS(cg, sdg, item, visitedStatementCount, worklist);
+            buildTypingGraphForStmtBFS(sdg, item, visitedStatementCount, worklist);
         }
     }
 
-    private static void buildTypingGraphForStmtBFS(CallGraph cg, Graph<Statement> sdg, ConstructionWorklist.Item item,
+    private static void buildTypingGraphForStmtBFS(Graph<Statement> sdg, ConstructionWorklist.Item item,
                                                    Map<Statement, SimpleCounter> statementVisitCount,
                                                    ConstructionWorklist worklist) {
 
-        Optional<TypingNode> newCachedNode = handleStatement(cg, sdg, item, worklist);
+        Optional<TypingNode> newCachedNode = handleStatement(sdg, item, worklist);
         if (statementVisited(sdg, item.statement(), statementVisitCount)) {
             return;
         }
@@ -150,7 +151,7 @@ public class TypingGraphUtil {
         }
     }
 
-    private static Optional<TypingNode> handleStatement(CallGraph cg, Graph<Statement> sdg,
+    private static Optional<TypingNode> handleStatement(Graph<Statement> sdg,
                                                         ConstructionWorklist.Item item, ConstructionWorklist worklist) {
         Statement stmt = item.statement();
         TypingNode cachedNode = item.cachedNode().orElse(null);
@@ -164,9 +165,9 @@ public class TypingGraphUtil {
             case NORMAL_RET_CALLER ->
                     handleNormalRetCaller(sdg, (NormalReturnCaller) stmt, cachedNode, item.cachedNormalStatement());
             case NORMAL_RET_CALLEE -> item.cachedNode();
-            case HEAP_RET_CALLEE -> handleHeapRetCallee(cg, (HeapReturnCallee) stmt, cachedNode);
-            case HEAP_RET_CALLER -> handleHeapRetCaller(cg, (HeapReturnCaller) stmt);
-            case HEAP_PARAM_CALLEE -> handleHeapParamCallee(cg, (HeapParamCallee) stmt);
+            case HEAP_RET_CALLEE -> handleHeapRetCallee((HeapReturnCallee) stmt, cachedNode);
+            case HEAP_RET_CALLER -> handleHeapRetCaller((HeapReturnCaller) stmt);
+            case HEAP_PARAM_CALLEE -> handleHeapParamCallee((HeapParamCallee) stmt);
             default -> Optional.empty();
         };
     }
@@ -336,8 +337,9 @@ public class TypingGraphUtil {
     }
 
 
-    private static Optional<TypingNode> handleHeapRetCallee(CallGraph cg, HeapReturnCallee hrc, TypingNode cachedNode) {
-        if (cachedNode == null || !cachedNode.isStaticField() || hrc.getNode().equals(cg.getFakeRootNode())) {
+    private static Optional<TypingNode> handleHeapRetCallee(HeapReturnCallee hrc, TypingNode cachedNode) {
+
+        if (cachedNode == null || !cachedNode.isStaticField() || hrc.getNode().equals(fakeRootNode)) {
             // instance field is immediately used
             return Optional.empty();
         }
@@ -351,8 +353,8 @@ public class TypingGraphUtil {
         return Optional.empty();
     }
 
-    private static Optional<TypingNode> handleHeapRetCaller(CallGraph cg, HeapReturnCaller hrc) {
-        if (hrc.getNode().equals(cg.getFakeRootNode())) {
+    private static Optional<TypingNode> handleHeapRetCaller(HeapReturnCaller hrc) {
+        if (hrc.getNode().equals(fakeRootNode)) {
             return Optional.empty();
         }
         TypingNode newCachedNode = null;
@@ -363,8 +365,8 @@ public class TypingGraphUtil {
         return newCachedNode == null ? Optional.empty() : Optional.of(newCachedNode);
     }
 
-    private static Optional<TypingNode> handleHeapParamCallee(CallGraph cg, HeapParamCallee hrc) {
-        if (hrc.getNode().equals(cg.getFakeRootNode())) {
+    private static Optional<TypingNode> handleHeapParamCallee(HeapParamCallee hrc) {
+        if (hrc.getNode().equals(fakeRootNode)) {
             return Optional.empty();
         }
         TypingNode newCachedNode = null;
