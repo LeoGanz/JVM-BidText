@@ -1,5 +1,6 @@
 package edu.purdue.cs.toydroid.bidtext.analysis;
 
+import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
@@ -11,11 +12,13 @@ import java.util.List;
 import java.util.Objects;
 
 public class DiscoveredSink {
+    private final Statement statement;
     private final SSAAbstractInvokeInstruction instruction;
     private final TypingSubGraph subGraph;
     private final SinkDefinitions.SinkDefinition sinkDefinition;
 
-    public DiscoveredSink(SSAAbstractInvokeInstruction instruction, TypingSubGraph subGraph) {
+    public DiscoveredSink(Statement statement, SSAAbstractInvokeInstruction instruction, TypingSubGraph subGraph) {
+        this.statement = statement;
         this.instruction = instruction;
         this.subGraph = subGraph;
         if (!SinkDefinitions.matchesSinkDefinition(instruction)) {
@@ -81,5 +84,9 @@ public class DiscoveredSink {
 
     public String getTag() {
         return sinkDefinition.tag();
+    }
+
+    public Statement getStatement() {
+        return statement;
     }
 }

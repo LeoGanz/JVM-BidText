@@ -140,16 +140,11 @@ public class AnalysisUtil {
             writer.println();
             writer.print("******** ");
             writer.print(text.trim());
-            writer.print(" ********");
-            writer.println();
+            writer.println(" ********");
             for (Statement stmt : path) {
-                writer.print(stmt.toString());
-                writer.println();
+                writer.println(stmt);
             }
-            writer.print("[[ ");
-            writer.print(sink.instruction());
-            writer.print(" ]]");
-            writer.println();
+            writer.println(sink.getStatement());
             writer.flush();
         }
     }

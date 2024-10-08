@@ -280,7 +280,7 @@ public class InvocationHandler {
             return;
         }
         isSink = true;
-        DiscoveredSink sink = new DiscoveredSink(instruction, subGraph);
+        DiscoveredSink sink = new DiscoveredSink(statement, instruction, subGraph);
         sink.getInterestingParameters().forEach(TypingNode::markSpecial);
         AnalysisUtil.recordSink(sink);
 
