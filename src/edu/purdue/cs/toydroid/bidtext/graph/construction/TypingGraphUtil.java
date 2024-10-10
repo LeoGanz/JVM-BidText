@@ -319,21 +319,21 @@ public class TypingGraphUtil {
         TypingRecord orec = currentTypingGraph.findOrCreateTypingRecord(lhsNode.getGraphNodeId());
         TypingRecord nrec = currentTypingGraph.findOrCreateTypingRecord(rhsNode.getGraphNodeId());
         TypingConstraint forwardConstraint =
-                new TypingConstraint(lhsNode.getGraphNodeId(), TypingConstraint.EQ, rhsNode.getGraphNodeId());
+                new TypingConstraint(rhsNode.getGraphNodeId(), TypingConstraint.EQ, lhsNode.getGraphNodeId());
         TypingConstraint backwardConstraint = forwardConstraint;
         if (predStatement.isPresent()) {
             forwardConstraint.addPath(predStatement.get());
-//            backwardConstraint =
-//                    new TypingConstraint(lhsNode.getGraphNodeId(), TypingConstraint.EQ, rhsNode.getGraphNodeId());
-//            // reverse the path for backward propagation ?
-//            backwardConstraint.addPath(predStatement.get());
-//            backwardConstraint.addPath(statement);
+            backwardConstraint =
+                    new TypingConstraint(rhsNode.getGraphNodeId(), TypingConstraint.EQ, lhsNode.getGraphNodeId());
+            // reverse the path for backward propagation ?
+            backwardConstraint.addPath(statement);
+            backwardConstraint.addPath(predStatement.get());
         }
         if (statement != null) {
             forwardConstraint.addPath(statement);
         }
-        nrec.addForwardTypingConstraint(forwardConstraint);
-        orec.addBackwardTypingConstraint(backwardConstraint);
+        orec.addForwardTypingConstraint(forwardConstraint);
+        nrec.addBackwardTypingConstraint(backwardConstraint);
     }
 
 
