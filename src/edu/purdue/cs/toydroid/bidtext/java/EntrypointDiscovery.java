@@ -18,7 +18,6 @@ public class EntrypointDiscovery {
 
     private static final Logger logger = LogManager.getLogger(EntrypointDiscovery.class);
     private static final boolean CONSIDER_OVERRIDING_PRIMORDIAL_AS_OVERRIDING_FRAMEWORK = true;
-    private static final boolean USE_OVERRIDING_FRAMEWORK_CHECK = false;
     private static final String PREFIX_OF_CALLBACK_METHODS = "on";
     private final Set<Entrypoint> entrypoints = new HashSet<>();
     private final Set<String> entrypointSignatures = new HashSet<>();
@@ -63,22 +62,26 @@ public class EntrypointDiscovery {
             }
             String methodName = method.getName().toString();
             if (methodName.startsWith(PREFIX_OF_CALLBACK_METHODS) &&
-                    (!USE_OVERRIDING_FRAMEWORK_CHECK || overridingFramework(method))) {
+                    (overridingFramework(method) || overridingAbstract(method))) {
                 addEntrypoint(new DefaultEntrypoint(method, classHierarchy));
             }
         }
     }
 
+    // WALA CHA callgraph cannot handle abstract methods
+    // therefore we need to consider implementations of abstract methods as entrypoints
+    private static boolean overridingAbstract(IMethod method) {
+        IMethod methodInAnySuperclasses = findSuperclassMethod(method);
+        if (methodInAnySuperclasses == null) {
+            return false;
+        }
+        return methodInAnySuperclasses.isAbstract();
+    }
+
     private static boolean overridingFramework(IMethod method) {
         //TODO handle anonymous classes
 
-        IClass superclass = method.getDeclaringClass().getSuperclass();
-        if (superclass == null) { // superclass is Object
-            return false;
-        }
-
-        // can be even higher in the hierarchy than 'superclass'
-        IMethod methodInAnySuperclasses = superclass.getMethod(method.getSelector());
+        IMethod methodInAnySuperclasses = findSuperclassMethod(method);
         if (methodInAnySuperclasses == null) {
             return false;
         }
@@ -95,6 +98,16 @@ public class EntrypointDiscovery {
 
         // recursion is guaranteed to terminate because the superclass chain is finite
         // getSuperclass() returns null for Object class which terminates the recursion
+    }
+
+    private static IMethod findSuperclassMethod(IMethod method) {
+        IClass superclass = method.getDeclaringClass().getSuperclass();
+        if (superclass == null) { // superclass is Object
+            return null;
+        }
+
+        // can be even higher in the hierarchy than 'superclass'
+        return superclass.getMethod(method.getSelector());
     }
 
     private void addEntrypoint(Entrypoint ep) {
