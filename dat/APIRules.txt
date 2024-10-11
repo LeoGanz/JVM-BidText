@@ -242,3 +242,9 @@
 [static] android.util.Log.wtf(Ljava/lang/String;Ljava/lang/String;)I 0=>1
 [static] android.util.Log.wtf(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I 0=>1
 [static] android.util.Log.wtf(Ljava/lang/String;Ljava/lang/Throwable;)I 0>=<1
+
+
+
+
+# no propagation for constructs sending data to the network
+[instance] okhttp3.WebSocket.send(Ljava/lang/String;)Z 0>=<1
