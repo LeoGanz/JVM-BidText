@@ -247,4 +247,4 @@
 
 
 # no propagation for constructs sending data to the network
-[instance] okhttp3.WebSocket.send(Ljava/lang/String;)Z 0>=<1
+#[instance] okhttp3.WebSocket.send(Ljava/lang/String;)Z 0>=<1
