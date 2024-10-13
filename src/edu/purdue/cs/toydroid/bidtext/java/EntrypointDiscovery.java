@@ -19,6 +19,7 @@ public class EntrypointDiscovery {
     private static final Logger logger = LogManager.getLogger(EntrypointDiscovery.class);
     private static final boolean CONSIDER_OVERRIDING_PRIMORDIAL_AS_OVERRIDING_FRAMEWORK = true;
     private static final String PREFIX_OF_CALLBACK_METHODS = "on";
+    private static final boolean USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT = true;
     private final Set<Entrypoint> entrypoints = new HashSet<>();
     private final Set<String> entrypointSignatures = new HashSet<>();
     private final IClassHierarchy classHierarchy;
@@ -62,7 +63,7 @@ public class EntrypointDiscovery {
             }
             String methodName = method.getName().toString();
             if (methodName.startsWith(PREFIX_OF_CALLBACK_METHODS) &&
-                    (overridingFramework(method) || overridingAbstract(method))) {
+                    (overridingFramework(method) || overridingAbstract(method) || USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT)) {
                 addEntrypoint(new DefaultEntrypoint(method, classHierarchy));
             }
         }
