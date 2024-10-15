@@ -47,9 +47,9 @@ jar {
 }
 
 dependencies {
-    implementation 'com.ibm.wala:com.ibm.wala.core:1.6.5'
-    implementation 'com.ibm.wala:com.ibm.wala.cast:1.6.5'
-    implementation 'com.ibm.wala:com.ibm.wala.dalvik:1.6.5'
+    implementation 'com.ibm.wala:com.ibm.wala.core:1.6.7'
+    implementation 'com.ibm.wala:com.ibm.wala.cast:1.6.7'
+    implementation 'com.ibm.wala:com.ibm.wala.dalvik:1.6.7'
     implementation 'org.apktool:apktool-lib:2.8.1'
 //    implementation 'com.android.tools.smali:smali:3.0.5'
     implementation 'org.smali:dexlib2:2.5.2'
