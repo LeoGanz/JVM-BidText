@@ -1,16 +1,6 @@
 package edu.purdue.cs.toydroid.bidtext.analysis;
 
-import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ipa.slicer.NormalReturnCaller;
-import com.ibm.wala.ipa.slicer.NormalStatement;
-import com.ibm.wala.ipa.slicer.ParamCaller;
 import com.ibm.wala.ipa.slicer.Statement;
-import com.ibm.wala.ssa.IR;
-import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
-import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SymbolTable;
-import edu.purdue.cs.toydroid.bidtext.graph.APISourceCorrelationRules;
-import edu.purdue.cs.toydroid.utils.WalaUtil;
 import edu.stanford.nlp.ling.HasWord;
 import edu.stanford.nlp.ling.Label;
 import edu.stanford.nlp.parser.lexparser.LexicalizedParser;
@@ -22,179 +12,121 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.*;
-import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class TextAnalysis {
 
     private static final Logger logger = LogManager.getLogger(TextAnalysis.class);
 
-    private final static String GRAMMAR = "edu/stanford/nlp/models/lexparser/englishPCFG.caseless.ser.gz";
-
-    private final static Pattern keywordPattern = Pattern.compile(
-            "\\b(lat|lng|lon|latlng|latitude|longitude|imei|imsi|u(ser)?((\\s|_)?name|(\\s|_)?id)|e-?mail|pin(code|\\s(code|number|no|#))?|password|pwd|passwd)\\b");
-
-    private final SensitiveTerms sensitiveTerms;
+    private final static String GRAMMAR = "edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz";
 
     private static LexicalizedParser lexParser;
-    public String tag;
-    private StringBuilder tagBuilder;
+    private final SensitiveTerms sensitiveTerms;
     private final Map<String, List<Statement>> text2Path;
+    private Set<String> sensitivityIndicators;
 
     public TextAnalysis() throws IOException {
         text2Path = new HashMap<>();
         sensitiveTerms = new SensitiveTerms(SensitiveTerms.TERM_FILE);
     }
 
-    public static boolean maybeKeyword(String str) {
-        if (str == null || str.isEmpty()) {
-            return false;
-        }
-        if (str.equals("location") || str.equals("gps")
-                || str.equals("network") || str.equals("android_id")) {
-            return true;
-        }
-        if (str.startsWith("android.")) {
-            return false;
-        }
-        if (str.startsWith("http:") || str.startsWith("https:")
-                || str.startsWith("/")) {
-            int idx = str.indexOf('?');
-            if (idx > 0) {
-                String s = str.substring(idx + 1);
-                return keywordPattern.matcher(s).find();
-            }
-        } else if (!str.contains(" ")) {
-            str = splitWord(str);
-            return keywordPattern.matcher(str).find();
-        } else {
-            return keywordPattern.matcher(str).find();
-        }
-        return false;
+    public void analyze(Map<String, List<Statement>> texts) {
+        sensitivityIndicators = new HashSet<>();
+        analyzeSensitivity(texts);
     }
 
-    public Map<String, List<Statement>> getText2Path() {
-        return text2Path;
+    private void analyzeSensitivity(Map<String, List<Statement>> texts) {
+        Set<Map.Entry<String, List<Statement>>> textSet = texts.entrySet();
+        for (Map.Entry<String, List<Statement>> entry : textSet) {
+            String text = entry.getKey();
+            List<Statement> path = entry.getValue();
+            if (text.startsWith("http:") || text.startsWith("https:") || text.startsWith("/")) {
+                int idx = text.indexOf('?');
+                if (idx > 0) {
+                    String s = text.substring(idx + 1);
+                    recordIfContainsKeyword(s, text, path);
+                }
+            } else if (text.startsWith("&") && text.endsWith("=")) {
+                recordIfContainsKeyword(text, text, path);
+            } else if (text.length() == 1 || (!text.isEmpty() && Character.isDigit(text.charAt(0)))) {
+                continue;
+            } else if (!text.contains(" ")) {
+                recordIfContainsKeyword(text, text, path);
+            } else if (findKeyword(text).isPresent()) {
+                recordIfNotNegated(text, path);
+            }
+        }
     }
 
-    public String analyze(Map<String, List<Statement>> texts, boolean isGUIText) {
-        tagBuilder = new StringBuilder();
-        if (!isGUIText) {
-            if (texts.containsKey("location")) {
-                text2Path.put("location", texts.remove("location"));
-                if (texts.containsKey("gps")) {
-                    text2Path.put("gps", texts.remove("gps"));
-                    record("location/gps");
-                }
-                if (texts.containsKey("network")) {
-                    text2Path.put("network", texts.remove("network"));
-                    record("location/network");
-                }
-            }
-            if (texts.containsKey("latitude")) {
-                text2Path.put("latitude", texts.remove("latitude"));
-                record("latitude");
-            }
-            if (texts.containsKey("longitude")) {
-                text2Path.put("longitude", texts.remove("longitude"));
-                record("longitude");
-            }
-            if (texts.containsKey("lat")) {
-                text2Path.put("lat", texts.remove("lat"));
-                record("lat");
-                if (texts.containsKey("lng")) {
-                    text2Path.put("lng", texts.remove("lng"));
-                    record("lng");
-                } else if (texts.containsKey("long")) {
-                    text2Path.put("long", texts.remove("long"));
-                    record("long");
-                } else if (texts.containsKey("lon")) {
-                    text2Path.put("lon", texts.remove("lon"));
-                    record("lon");
-                }
-            }
-            if (texts.containsKey("android_id")) {
-                List<Statement> p = texts.get("android_id");
-                boolean skip = false;
-                if (p != null && p.size() >= 2) {
-                    Statement s = p.getFirst();
-                    if (s.getKind() == Statement.Kind.PARAM_CALLER) {
-                        ParamCaller pc = (ParamCaller) s;
-                        if (pc.getInstruction()
-                                .getDeclaredTarget()
-                                .getSignature()
-                                .startsWith(
-                                        "com.facebook.internal.Utility.logd")) {
-                            skip = true;
-                        }
-                    }
-                }
-                if (!skip) {
-                    text2Path.put("android_id", texts.remove("android_id"));
-                    record("android_id");
-                }
-            }
-        }
-        List<String> f = purify(texts);
-        // logger.debug("  {}", f.toString());
-        check(f, texts);
-        refineText2Path();
-        return tagBuilder.toString();
+    private void recordIfContainsKeyword(String textPartAnalyzed, String completeText, List<Statement> path) {
+        findKeyword(textPartAnalyzed).ifPresent(match -> {
+            sensitivityIndicators.add(match);
+            text2Path.put(completeText, path);
+        });
     }
 
-    private void refineText2Path() {
-        if (text2Path.isEmpty()) {
-            return;
+    private void recordIfNotNegated(String origStr, List<Statement> path) {
+        if (lexParser == null) {
+            lexParser = LexicalizedParser.loadModel(GRAMMAR);
         }
-        Set<Map.Entry<String, List<Statement>>> pSet = text2Path.entrySet();
-        Set<String> refined = new HashSet<>();
-        for (Map.Entry<String, List<Statement>> pEntry : pSet) {
-            String text = pEntry.getKey();
-            List<Statement> path = pEntry.getValue();
-            if (path == null) {
-                refined.add(text);
-            } else if (!path.isEmpty()) {
-                Statement startStmt = path.getFirst();
-                SSAInstruction instr = null;
-                if (Statement.Kind.NORMAL == startStmt.getKind()) {
-                    NormalStatement nstmt = (NormalStatement) startStmt;
-                    instr = nstmt.getInstruction();
-                } else if (Statement.Kind.NORMAL_RET_CALLER == startStmt.getKind()) {
-                    NormalReturnCaller nrc = (NormalReturnCaller) startStmt;
-                    instr = nrc.getInstruction();
-                } else if (Statement.Kind.PARAM_CALLER == startStmt.getKind()) {
-                    ParamCaller pcaller = (ParamCaller) startStmt;
-                    instr = pcaller.getInstruction();
+        LexicalizedParser lp = lexParser;
+        TreebankLanguagePack tlp = lp.getOp().langpack();
+        GrammaticalStructureFactory gsf = tlp.grammaticalStructureFactory();
+        // Tokenizer<? extends HasWord> toke = tlp.getTokenizerFactory()
+        // .getTokenizer(new StringReader(origStr));
+        // List<? extends HasWord> sentence = toke.tokenize();
+        DocumentPreprocessor tokenizer = new DocumentPreprocessor(new StringReader(origStr));
+        for (List<? extends HasWord> sentence : tokenizer) {
+            String s = rebuildString(sentence);
+            if (findKeyword(s).isEmpty()) {
+                continue;
+            }
+            Tree parse = lp.parse(sentence);
+            // System.err.println(s);
+            GrammaticalStructure gs = gsf.newGrammaticalStructure(parse);
+            List<TypedDependency> tdl = gs.typedDependenciesCCprocessed();
+//                 System.out.println(tdl);
+            // parse.pennPrint();
+            Tree c = parse.firstChild();
+            Label l = c.label();
+            // System.err.println(c.getClass());
+            // if not a sentence
+            if (!l.value().equals("S")) {
+                // Not a sentence
+                recordIfContainsKeyword(s, origStr, path);
+                continue;
+            }
+
+            int negIdx = 0;
+            for (TypedDependency td : tdl) {
+                if ("neg".equals(td.reln().toString()) ||
+                        // second condition added during rework
+                        td.dep().backingLabel().value().equalsIgnoreCase("not")) {
+                    break;
                 }
-                boolean hit = false;
-                if (instr != null) {
-                    int nUses = instr.getNumberOfUses();
-                    SymbolTable symTable = null;
-                    if (nUses > 0) {
-                        CGNode node = startStmt.getNode();
-                        IR ir = node.getIR();
-                        symTable = ir.getSymbolTable();
-                    }
-                    for (int i = 0; i < nUses; i++) {
-                        int uVal = instr.getUse(i);
-                        if (symTable.isStringConstant(uVal)
-                                && text.equals(symTable.getStringValue(uVal))) {
-                            hit = true;
-                            break;
-                        }
-                    }
-                    if (!hit && instr instanceof SSAAbstractInvokeInstruction) {
-                        String sig = WalaUtil.getSignature((SSAAbstractInvokeInstruction) instr);
-                        if (sig != null
-                                && text.equals(APISourceCorrelationRules.getRule(sig))) {
-                            hit = true;
-                        }
-                    }
-                }
-                if (!hit) {
-                    refined.add(text);
+                negIdx++;
+            }
+
+            if (negIdx <= 0 || negIdx >= tdl.size()) {
+                // no negation found
+                recordIfContainsKeyword(s, origStr, path);
+                continue;
+            }
+
+            TypedDependency td = tdl.get(negIdx - 1);
+            if (td.reln().toString().equals("aux")) {
+                String ns = td.dep().backingLabel().value().toLowerCase();
+                if ("should".equals(ns) || "shall".equals(ns)
+                    /* || "could".equals(ns) || "can".equals(ns) */) {
+                    logger.info("    * Negation detected: <<{}>>", s);
+                } else if ("do".equals(ns) && (negIdx == 1 || !tdl.get(negIdx - 2).reln().toString().equals("nsubj"))) {
+                    logger.info("    * Negation detected: <<{}>>", s);
+                } else {
+                    recordIfContainsKeyword(s, origStr, path);
                 }
             }
         }
+        // System.err.println(tagBuilder.toString());
     }
 
     private String rebuildString(List<? extends HasWord> sentence) {
@@ -206,142 +138,36 @@ public class TextAnalysis {
         return builder.toString().trim();
     }
 
-    private void check(List<String> f, Map<String, List<Statement>> texts) {
-        if (f.isEmpty()) {
-            return;
+    private Optional<String> findKeyword(String string) {
+        if (string == null || string.isEmpty()) {
+            return Optional.empty();
         }
-        if (lexParser == null) {
-            lexParser = LexicalizedParser.loadModel(GRAMMAR);
-        }
-        LexicalizedParser lp = lexParser;
-        TreebankLanguagePack tlp = lp.getOp().langpack();
-        GrammaticalStructureFactory gsf = tlp.grammaticalStructureFactory();
-        for (String s : f) {
-            String origStr = s;
-            // Tokenizer<? extends HasWord> toke = tlp.getTokenizerFactory()
-            // .getTokenizer(new StringReader(s));
-            // List<? extends HasWord> sentence = toke.tokenize();
-            DocumentPreprocessor tokenizer = new DocumentPreprocessor(
-                    new StringReader(s));
-            for (List<? extends HasWord> sentence : tokenizer) {
-                s = rebuildString(sentence);
-                if (!containsKeywords(s.toLowerCase())) {
-                    continue;
-                }
-                Tree parse = lp.parse(sentence);
-                // System.err.println(s);
-                GrammaticalStructure gs = gsf.newGrammaticalStructure(parse);
-                List<TypedDependency> tdl = gs.typedDependenciesCCprocessed();
-                // System.out.println(tdl);
-                // parse.pennPrint();
-                Tree c = parse.firstChild();
-                Label l = c.label();
-                // System.err.println(c.getClass());
-                // if not a sentence
-                if (!l.value().equals("S")) {
-                    record(s);
-                    text2Path.put(origStr, texts.get(origStr));
-                } else {
-                    int negIdx = 0;
-                    for (TypedDependency td : tdl) {
-                        if ("neg".equals(td.reln().toString())) {
-                            break;
-                        }
-                        negIdx++;
-                    }
+        String lowercaseString = string.toLowerCase();
+        String withCamelToWhitespace = insertWhitespaceIntoCamelCase(string);
+        String withoutUnderscore = withCamelToWhitespace.replace('_', ' ');
+        System.out.println(withoutUnderscore);
+        for (SensitiveTerms.SensitiveTerm term : sensitiveTerms) {
+            // patterns could require underscores
+            Matcher matcher = term.pattern().matcher(lowercaseString);
+            if (matcher.find()) {
+                String matched = matcher.group();
+                return Optional.of(matched);
+            }
 
-                    if (negIdx > 0 && negIdx < tdl.size()) {
-                        TypedDependency td = tdl.get(negIdx - 1);
-                        if (td.reln().toString().equals("aux")) {
-                            String ns = td.dep().backingLabel().value();
-                            if ("should".equals(ns) || "shall".equals(ns)
-                                /* || "could".equals(ns) || "can".equals(ns) */) {
-                                logger.info("    * Negation detected: <<{}>>",
-                                        s);
-                            } else if ("do".equals(ns)
-                                    && (negIdx == 1 || (negIdx > 1 && !tdl.get(
-                                            negIdx - 2)
-                                    .reln()
-                                    .toString()
-                                    .equals("nsubj")))) {
-                                logger.info("    * Negation detected: <<{}>>",
-                                        s);
-                            } else {
-                                record(s);
-                                text2Path.put(origStr, texts.get(origStr));
-                            }
-                        }
-                    } else {
-                        record(s);
-                        text2Path.put(origStr, texts.get(origStr));
-                    }
-                }
+            // search should also match if parts of words are concatenated in camel case or with underscores
+            matcher = term.pattern().matcher(withoutUnderscore);
+            if (matcher.find()) {
+                String matched = matcher.group();
+                return Optional.of(matched);
             }
         }
-        // System.err.println(tagBuilder.toString());
+        return Optional.empty();
     }
 
-    private void record(String str) {
-        if (!tagBuilder.isEmpty()) {
-            tagBuilder.append(',');
-        }
-        tagBuilder.append('[');
-        tagBuilder.append(str);
-        tagBuilder.append("]");
-    }
-
-    private List<String> purify(Map<String, List<Statement>> texts) {
-        List<String> f = new LinkedList<>();
-        Set<String> toRemove = new HashSet<>();
-        Set<Map.Entry<String, List<Statement>>> textSet = texts.entrySet();
-        for (Map.Entry<String, List<Statement>> entry : textSet) {
-            String str = entry.getKey();
-            List<Statement> path = entry.getValue();
-            if (str.startsWith("http:") || str.startsWith("https:")
-                    || str.startsWith("/")) {
-                int idx = str.indexOf('?');
-                if (idx > 0 && str.length() > idx) {
-                    String s = str.substring(idx + 1);
-                    if (containsKeywords(s.toLowerCase())) {
-                        record(s);
-                        text2Path.put(str, path);
-                        toRemove.add(str);
-                    }
-                }
-            } else if (str.startsWith("&") && str.endsWith("=")) {
-                if (containsKeywords(str.toLowerCase())) {
-                    record(str);
-                    text2Path.put(str, path);
-                    toRemove.add(str);
-                }
-            } else if (str.length() == 1
-                    || (!str.isEmpty() && Character.isDigit(str.charAt(0)))) {
-                continue;
-            } else if (str.startsWith("android.action.")
-                    || str.startsWith("android.permission.")
-                    || str.startsWith("android.intent.")) {
-                continue;
-            } else if (!str.contains(" ")
-                    && !str.toLowerCase().contains("appuid")) {
-                String splited = splitWord(str);
-                if (containsKeywords(str)
-                        || containsKeywords(splited.toLowerCase())) {
-                    record(str);
-                    text2Path.put(str, path);
-                    toRemove.add(str);
-                }
-            } else if (containsKeywords(str.toLowerCase())) {
-                f.add(str);
-                // toRemove.add(str);//comment for path retrieve
-            }
-        }
-        for (String s : toRemove) {
-            texts.remove(s);
-        }
-        return f;
-    }
-
-    private static String splitWord(String src) {
+    /**
+     * insert whitespace in between words concatenated in camel case but keeps continuous upper case sequences
+     */
+    private static String insertWhitespaceIntoCamelCase(String src) {
         StringBuilder builder = new StringBuilder(src);
         int s = builder.length();
         int idx = 0;
@@ -361,8 +187,7 @@ public class TextAnalysis {
             } else {
                 if (Character.isLowerCase(ch)) {
                     if (continuousUpper) {
-                        if (idx > 0
-                                && !Character.isWhitespace(builder.charAt(idx - 1))) {
+                        if (idx > 0 && !Character.isWhitespace(builder.charAt(idx - 1))) {
                             builder.insert(idx - 1, ' ');
                             idx++;
                         }
@@ -383,26 +208,11 @@ public class TextAnalysis {
         return builder.toString().trim();
     }
 
-    private boolean containsKeywords(String str) {
-        // System.err.println("STR = " + str);
-        for (SensitiveTerms.SensitiveTerm term : sensitiveTerms) {
-            if (term.pattern().matcher(str).find()) {
-                return true;
-            }
-        }
-        return false;
+    public Map<String, List<Statement>> getText2Path() {
+        return text2Path;
     }
 
-    public static void main(String[] args) throws IOException {
-        TextAnalysis a = new TextAnalysis();
-        Map<String, List<Statement>> l = new HashMap<>();
-        // List<String> l = new LinkedList<String>();
-        l.put("enterPassword.", null);
-        l.put("include user_id. do not include username. ", null);
-        l.put(".email", null);
-        // a.check(l);
-        a.analyze(l, false);
-        System.out.println(l);
+    public Set<String> getSensitivityIndicators() {
+        return sensitivityIndicators;
     }
-
 }

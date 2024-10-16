@@ -1,8 +1,9 @@
-# comment
+# This file has the following format:
 #
 # CATERGORY
 # pattern 1
 # or pattern n
+# # -> comment / disabled pattern
 # blank line or EOF -> end of category
 
 ACCOUNT

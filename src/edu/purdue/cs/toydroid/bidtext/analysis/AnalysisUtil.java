@@ -2,7 +2,6 @@ package edu.purdue.cs.toydroid.bidtext.analysis;
 
 import com.ibm.wala.ipa.slicer.Statement;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
-import edu.purdue.cs.toydroid.bidtext.android.util.ResourceUtil;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingGraph;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingNode;
 import edu.purdue.cs.toydroid.bidtext.graph.TypingRecord;
@@ -21,16 +20,16 @@ import java.util.stream.Stream;
 public class AnalysisUtil {
     private static final Logger logger = LogManager.getLogger(AnalysisUtil.class);
 
-    private static final Set<DiscoveredSink> sinks = new HashSet<>();
+    private static final Set<DiscoveredSink> SINKS = new HashSet<>();
     public static final String REPORT_FOLDER = "report";
 
     public static boolean DUMP_VERBOSE = true;
 
     public static void recordSink(DiscoveredSink sink) {
-        if (sinks.contains(sink)) {
+        if (SINKS.contains(sink)) {
             return;
         }
-        sinks.add(sink);
+        SINKS.add(sink);
         SSAAbstractInvokeInstruction instruction = sink.instruction();
         TypingSubGraph subGraph = sink.enclosingTypingSubGraph();
         String sinkClassName = instruction.getDeclaredTarget().getDeclaringClass().getName().toString();
@@ -47,12 +46,12 @@ public class AnalysisUtil {
     public static void dumpTextForSinks() throws IOException {
         logger.info("Dump text for all sinks.");
         clearSinksFromReportFolder();
-        if (sinks.isEmpty()) {
+        if (SINKS.isEmpty()) {
             logger.warn("No interesting sinks are found.");
             return;
         }
         int idx = 0;
-        for (DiscoveredSink sink : sinks) {
+        for (DiscoveredSink sink : SINKS) {
             dumpTextForSink(sink, idx++);
         }
         logger.info("Dumped text for {} sinks.", idx);
@@ -83,21 +82,15 @@ public class AnalysisUtil {
                     collectTextsForNode(gNode, graph, codeTexts, constants);
                     collectTextsForFields(gNode, graph, codeTexts, constants);
                 });
-        logger.debug("codeTexts: " + codeTexts);
-        logger.debug("constants: " + constants);
+        logger.debug("codeTexts: {}", codeTexts);
+        logger.debug("constants: {}", constants);
         TextAnalysis textAnalysis = new TextAnalysis();
-        String sensitiveTag = textAnalysis.analyze(codeTexts, false);
-        logger.debug("text2Path: " + textAnalysis.getText2Path());
+        textAnalysis.analyze(codeTexts);
+        logger.debug("text2Path: {}", textAnalysis.getText2Path());
 
 
         if (DUMP_VERBOSE) {
-            if (!sensitiveTag.isEmpty()) {
-                logger.debug("Sensitive Tag: {}", sensitiveTag);
-                writer.print("Sensitive Tag: ");
-                writer.print(sensitiveTag);
-                writer.println();
-            }
-            printCollectedTexts(writer, codeTexts, constants);
+            printCollectedTexts(writer, textAnalysis.getSensitivityIndicators(), codeTexts.keySet());
         }
 
         printPaths(sink, textAnalysis, writer);
@@ -120,23 +113,17 @@ public class AnalysisUtil {
         }
     }
 
-    private static void printCollectedTexts(PrintWriter writer, Map<String, List<Statement>> codeTexts,
-                                            Set<Integer> constants) {
-        writer.println("Collected the following texts:");
-        for (String t : codeTexts.keySet()) {
+    private static void printCollectedTexts(PrintWriter writer, Set<String> sensitiveKeywords, Set<String> nonSensitiveTexts){
+        writer.println();
+        writer.println("The following texts reached the sink:");
+        for (String t : nonSensitiveTexts) {
             writer.print(" - ");
-            writer.print(t);
-            writer.println();
+            writer.println(t);
         }
-        for (Integer iObj : constants) {
-            writer.print(" # 0x");
-            writer.print(Integer.toHexString(iObj));
-            writer.println();
-            String guiText = ResourceUtil.getLayoutText(iObj);
-            if (guiText != null && !guiText.isEmpty()) {
-                writer.print(guiText);
-                writer.println();
-            }
+        writer.println("In these texts, the following sensitivity indicators (keywords in a non-negated context) appeared:");
+        for (String t : sensitiveKeywords) {
+            writer.print(" - ");
+            writer.println(t);
         }
     }
 
@@ -151,18 +138,13 @@ public class AnalysisUtil {
             }
             writer.println();
             writer.println();
-            writer.print("********");
+            writer.print("******** ");
             writer.print(text.trim());
-            writer.print("********");
-            writer.println();
+            writer.println(" ********");
             for (Statement stmt : path) {
-                writer.print(stmt.toString());
-                writer.println();
+                writer.println(stmt);
             }
-            writer.print("[[ ");
-            writer.print(sink.instruction());
-            writer.print(" ]]");
-            writer.println();
+            writer.println(sink.getStatement());
             writer.flush();
         }
     }

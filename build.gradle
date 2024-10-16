@@ -47,9 +47,9 @@ jar {
 }
 
 dependencies {
-    implementation 'com.ibm.wala:com.ibm.wala.core:1.6.5'
-    implementation 'com.ibm.wala:com.ibm.wala.cast:1.6.5'
-    implementation 'com.ibm.wala:com.ibm.wala.dalvik:1.6.5'
+    implementation 'com.ibm.wala:com.ibm.wala.core:1.6.7'
+    implementation 'com.ibm.wala:com.ibm.wala.cast:1.6.7'
+    implementation 'com.ibm.wala:com.ibm.wala.dalvik:1.6.7'
     implementation 'org.apktool:apktool-lib:2.8.1'
 //    implementation 'com.android.tools.smali:smali:3.0.5'
     implementation 'org.smali:dexlib2:2.5.2'
@@ -60,7 +60,8 @@ dependencies {
     implementation 'com.google.guava:guava:33.0.0-jre'
     implementation 'commons-io:commons-io:2.15.1'
     implementation 'org.checkerframework:checker-qual:3.42.0'
-    implementation 'edu.stanford.nlp:stanford-corenlp:4.5.6'
+    implementation 'edu.stanford.nlp:stanford-corenlp:4.5.7'
+    implementation 'edu.stanford.nlp:stanford-corenlp:4.5.7:models'
 //    implementation 'commons-cli:commons-cli:1.6.0' //1.2
     implementation 'org.ogce:xpp3:1.1.6'
 
