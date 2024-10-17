@@ -33,6 +33,8 @@ public class AnnotationFinder {
         for (IClass clazz : applicationClasses) {
             AnnotationCategorization categorization = categorize(clazz);
             processClassCategorization(clazz, categorization);
+        }
+        for (IClass clazz : getClassesSupportingAutowiring()) {
             Set<IField> autowiredFieldsOfClazz = findAutowiredFields(clazz);
             processAutowiredFields(clazz, autowiredFieldsOfClazz);
         }
@@ -124,6 +126,14 @@ public class AnnotationFinder {
 
     public Set<IClass> getControllers() {
         return controllers;
+    }
+
+    public Set<IClass> getClassesSupportingAutowiring() {
+        Set<IClass> allClasses = new HashSet<>();
+        allClasses.addAll(singletonBeans);
+        allClasses.addAll(prototypeBeans);
+        allClasses.addAll(controllers);
+        return allClasses;
     }
 
     public Set<IField> getAutowiredFields(String clazz) {
