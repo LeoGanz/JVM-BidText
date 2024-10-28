@@ -145,7 +145,6 @@ public class TextAnalysis {
         String lowercaseString = string.toLowerCase();
         String withCamelToWhitespace = insertWhitespaceIntoCamelCase(string);
         String withoutUnderscore = withCamelToWhitespace.replace('_', ' ');
-        System.out.println(withoutUnderscore);
         for (SensitiveTerms.SensitiveTerm term : sensitiveTerms) {
             // patterns could require underscores
             Matcher matcher = term.pattern().matcher(lowercaseString);
