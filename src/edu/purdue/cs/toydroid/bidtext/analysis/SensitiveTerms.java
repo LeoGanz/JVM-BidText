@@ -19,7 +19,7 @@ public class SensitiveTerms implements Iterable<SensitiveTerms.SensitiveTerm> {
         collectTerms();
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         SensitiveTerms sensitiveTerms = new SensitiveTerms();
         for (SensitiveTerm term : sensitiveTerms) {
             System.out.println(term.tag() + "\n" + term.pattern() + "\n");

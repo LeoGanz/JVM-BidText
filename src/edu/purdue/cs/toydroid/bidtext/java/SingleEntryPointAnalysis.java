@@ -16,9 +16,11 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphSlicer;
 import edu.purdue.cs.toydroid.bidtext.graph.construction.TypingGraphUtil;
+import edu.purdue.cs.toydroid.utils.SimpleConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -26,8 +28,6 @@ import java.util.stream.Collectors;
 
 public class SingleEntryPointAnalysis {
     private static final Logger logger = LogManager.getLogger(SingleEntryPointAnalysis.class);
-    private static final int THRESHOLD_IGNORE = 10000000; // 10 million
-    private static final int THRESHOLD_CONTEXT_INSENSITIVE = 1000000; // 1 million
 
     private final AnalysisScope scope;
     private final ClassHierarchy classHierarchy;
@@ -38,7 +38,7 @@ public class SingleEntryPointAnalysis {
 
     public SingleEntryPointAnalysis(Entrypoint ep, AnalysisScope scope, ClassHierarchy classHierarchy,
                                     AnalysisCache cache, AtomicBoolean timeout) throws
-            CallGraphBuilderCancelException {
+            CallGraphBuilderCancelException, IOException {
         this.entrypoint = ep;
         this.scope = scope;
         this.classHierarchy = classHierarchy;
@@ -47,7 +47,7 @@ public class SingleEntryPointAnalysis {
         analyze(); // TODO use futures
     }
 
-    private void analyze() throws CallGraphBuilderCancelException {
+    private void analyze() throws CallGraphBuilderCancelException, IOException {
         AnalysisOptions options = new AnalysisOptions(scope, Set.of(entrypoint));
         options.setReflectionOptions(AnalysisOptions.ReflectionOptions.FULL);
 
@@ -56,10 +56,10 @@ public class SingleEntryPointAnalysis {
         }
         SSAPropagationCallGraphBuilder cgBuilder = Util.makeVanillaNCFABuilder(1, options, cache, classHierarchy);
         SDG<InstanceKey> sdg = buildSDG(options, cgBuilder);
-        if (sdg.getNumberOfNodes() > THRESHOLD_IGNORE) {
+        if (sdg.getNumberOfNodes() > SimpleConfig.getThresholdSkipEntrypoint()) {
             logger.warn(" * Too big SDG ({}). Ignore it.", sdg.getNumberOfNodes());
             return;
-        } else if (sdg.getNumberOfNodes() > THRESHOLD_CONTEXT_INSENSITIVE) {
+        } else if (sdg.getNumberOfNodes() > SimpleConfig.getThresholdContextInsensitive()) {
             logger.warn(" * Too big SDG ({}). Use context-insensitive builder.", sdg.getNumberOfNodes());
             if (timeout.get()) {
                 return;
