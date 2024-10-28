@@ -25,7 +25,9 @@ public class ForwardPropagation {
             int nextId = ct.getLhs();
             TypingNode nextNode = typingGraph.getNode(nextId);
             TypingRecord nextRec = typingGraph.getTypingRecord(nextId);
-            // System.err.println(record.getTypingTexts());
+            // TODO: skipping if nextNode.isConstant() can be a problem!
+            // e.g. for put operations in Map<String, String> where the value is a constant
+            // if value is leaked before put, no leak will be detected because we skipped the propagation
             if (nextNode != null && !nextNode.isConstant() && nextRec.merge(record, ct.getPath())) {
                 worklist.add(nextRec);
                 changed = true;
