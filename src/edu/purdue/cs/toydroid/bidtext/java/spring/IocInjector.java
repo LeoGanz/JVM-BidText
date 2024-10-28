@@ -47,8 +47,10 @@ public class IocInjector {
         ClassHierarchy adjustedClassHierarchy = CustomClassHierarchyFactory.make(getOutputJarPath(), cache, false);
         AnnotationFinder annotationFinder = new AnnotationFinder(adjustedClassHierarchy);
         annotationFinder.processClasses();
+        AnalysisOptions options = new AnalysisOptions(scope, Set.of());
+        options.setReflectionOptions(AnalysisOptions.ReflectionOptions.FULL);
         IocContainerClass springIOCModel =
-                IocContainerClass.make(annotationFinder, adjustedClassHierarchy, new AnalysisOptions(scope, Set.of()),
+                IocContainerClass.make(annotationFinder, adjustedClassHierarchy, options,
                         cache);
         boolean addSuccessful = adjustedClassHierarchy.addClass(springIOCModel);
         if (!addSuccessful) {
@@ -152,7 +154,8 @@ public class IocInjector {
     }
 
     private static PutInstruction buildStoreField(IField autowiredField, String nameOfClassUnderInvestigation) {
-        String fieldName = autowiredField.getName().toString();
+        String fieldNameFullyQualified = autowiredField.getName().toString();
+        String fieldName = fieldNameFullyQualified.substring(fieldNameFullyQualified.lastIndexOf('.') + 1);
         String fieldType = autowiredField.getFieldTypeReference().getName().toString() + ";";
         return PutInstruction.make(fieldType, nameOfClassUnderInvestigation, fieldName, false);
     }

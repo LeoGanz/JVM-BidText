@@ -49,7 +49,7 @@ public class SingleEntryPointAnalysis {
 
     private void analyze() throws CallGraphBuilderCancelException {
         AnalysisOptions options = new AnalysisOptions(scope, Set.of(entrypoint));
-        options.setReflectionOptions(AnalysisOptions.ReflectionOptions.NONE);
+        options.setReflectionOptions(AnalysisOptions.ReflectionOptions.FULL);
 
         if (timeout.get()) {
             return;
