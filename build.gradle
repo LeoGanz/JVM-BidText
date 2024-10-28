@@ -11,6 +11,12 @@ application {
     mainClass = 'edu.purdue.cs.toydroid.bidtext.java.Main'
 }
 
+tasks.register('runSuite', JavaExec) {
+    dependsOn 'classes'
+    mainClass = 'edu.purdue.cs.toydroid.bidtext.java.SuiteMain'
+    classpath = sourceSets.main.runtimeClasspath
+}
+
 distributions {
     main {
         distributionBaseName = 'JVM-BidText'
@@ -32,18 +38,8 @@ sourceSets {
 dependencies {
     implementation 'com.ibm.wala:com.ibm.wala.core:1.6.7'
     implementation 'com.ibm.wala:com.ibm.wala.cast:1.6.7'
-    implementation 'com.ibm.wala:com.ibm.wala.dalvik:1.6.7'
     implementation 'org.apache.logging.log4j:log4j-core:2.23.0'
     implementation 'org.slf4j:slf4j-api:2.0.12'
-    implementation 'com.google.guava:guava:33.0.0-jre'
-    implementation 'commons-io:commons-io:2.15.1'
-    implementation 'org.checkerframework:checker-qual:3.42.0'
     implementation 'edu.stanford.nlp:stanford-corenlp:4.5.7'
     implementation 'edu.stanford.nlp:stanford-corenlp:4.5.7:models'
-
-
-    // local libs
-    implementation fileTree(dir: 'lib', include: ['*.jar'])
 }
-
-
