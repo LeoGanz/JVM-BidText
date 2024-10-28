@@ -4,8 +4,15 @@ We use bidirectional text correlation analysis which allows us to detect leaks t
 JVM-BidText is based on [BidText](https://bitbucket.org/hjjandy/toydroid.bidtext/) which introduces the concept of bidirectional text correlation analysis for Android applications.
 JVM-BidText is an adapted and generalized version of BidText that supports general JVM projects (Java, Kotlin, etc.) and has basic support for Spring applications.
 
-## Configuration
+## Execution
+Compile the target application; JVM-BidText operates on the compiled bytecode.
+Run the analysis with the following command:
+```bash
+./gradlew run --args=<path-to-compiled-classes>
+```
+Reports are generated in the `reports` directory together with the log of the analysis run.
 
+## Configuration
 General configuration can be changed through the `Config.properties` file.
 The config file allows you to select which other files with rules etc. the analysis will use.
 Further, you can configure certain options for the analysis; we explain the options inside the file.
