@@ -7,9 +7,11 @@ import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.ClassLoaderReference;
+import edu.purdue.cs.toydroid.utils.SimpleConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -18,9 +20,18 @@ public class EntrypointDiscovery {
 
     private static final Logger logger = LogManager.getLogger(EntrypointDiscovery.class);
     private static final boolean CONSIDER_OVERRIDING_PRIMORDIAL_AS_OVERRIDING_FRAMEWORK = true;
-    private static final String PREFIX_OF_CALLBACK_METHODS = "on";
-    private static final boolean USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT = false;
-    public static final boolean USE_WORKAROUND_FOR_ABSTRACT = true;
+    private static final Set<String> PREFIXES_OF_CALLBACK_METHODS;
+    private static final boolean USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT;
+    public static final boolean USE_WORKAROUND_FOR_ABSTRACT;
+    static {
+        try {
+            PREFIXES_OF_CALLBACK_METHODS = SimpleConfig.getPrefixesOfCallbackMethods();
+            USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT = SimpleConfig.isUseAnyMethodWithPrefixAsEntrypoint();
+            USE_WORKAROUND_FOR_ABSTRACT = SimpleConfig.isUseWorkaroundForAbstract();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load config",e);
+        }
+    }
     private final Set<Entrypoint> entrypoints = new HashSet<>();
     private final Set<String> entrypointSignatures = new HashSet<>();
     private final IClassHierarchy classHierarchy;
@@ -62,12 +73,16 @@ public class EntrypointDiscovery {
             if (method.isPrivate() || method.isAbstract()) {
                 continue;
             }
-            String methodName = method.getName().toString();
-            if (methodName.startsWith(PREFIX_OF_CALLBACK_METHODS) &&
+            if (hasPrefixOfCallbackMethods(method) &&
                     (overridingFramework(method) || (USE_WORKAROUND_FOR_ABSTRACT && overridingAbstract(method)) || USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT)) {
                 addEntrypoint(new DefaultEntrypoint(method, classHierarchy));
             }
         }
+    }
+
+    private boolean hasPrefixOfCallbackMethods(IMethod method) {
+        String methodName = method.getName().toString();
+        return PREFIXES_OF_CALLBACK_METHODS.stream().anyMatch(methodName::startsWith);
     }
 
     // WALA CHA callgraph cannot handle abstract methods

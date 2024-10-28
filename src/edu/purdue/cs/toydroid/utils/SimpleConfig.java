@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.Set;
 
 public class SimpleConfig {
     private static final Logger logger = LogManager.getLogger(SimpleConfig.class);
@@ -20,6 +21,14 @@ public class SimpleConfig {
     private static String artificialSourcesFile;
     private static String apiPropagationRulesFile;
 
+    private static boolean springPresprocessingEnabled;
+    private static Set<String> prefixesOfCallbackMethods;
+    private static boolean useAnyMethodWithPrefixAsEntrypoint;
+    private static boolean useWorkaroundForAbstract;
+    private static int timeout;
+    private static int thresholdContextInsensitive;
+    private static int thresholdSkipEntrypoint;
+
     private static void parseConfig() throws IOException {
         if (configParsed) {
             return;
@@ -32,6 +41,14 @@ public class SimpleConfig {
         sinkDefinitionsFile = prop.getProperty("SINK_DEFINITIONS");
         artificialSourcesFile = prop.getProperty("ARTIFICIAL_SOURCES");
         apiPropagationRulesFile = prop.getProperty("API_PROPAGATION_RULES");
+
+        springPresprocessingEnabled = Boolean.parseBoolean(prop.getProperty("SPRING_PREPROCESSING_ENABLED"));
+        prefixesOfCallbackMethods = Set.of(prop.getProperty("PREFIXES_OF_CALLBACK_METHODS").split(","));
+        useAnyMethodWithPrefixAsEntrypoint = Boolean.parseBoolean(prop.getProperty("USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT"));
+        useWorkaroundForAbstract = Boolean.parseBoolean(prop.getProperty("USE_WORKAROUND_FOR_ABSTRACT"));
+        timeout = Integer.parseInt(prop.getProperty("TIMEOUT"));
+        thresholdContextInsensitive = Integer.parseInt(prop.getProperty("THRESHOLD_CONTEXT_INSENSITIVE"));
+        thresholdSkipEntrypoint = Integer.parseInt(prop.getProperty("THRESHOLD_SKIP_ENTRYPOINT"));
         is.close();
         configParsed = true;
     }
@@ -59,5 +76,40 @@ public class SimpleConfig {
     public static String getApiPropagationRulesFile() throws IOException {
         parseConfig();
         return apiPropagationRulesFile;
+    }
+
+    public static boolean isSpringPreprocessingEnabled() throws IOException {
+        parseConfig();
+        return springPresprocessingEnabled;
+    }
+
+    public static Set<String> getPrefixesOfCallbackMethods() throws IOException {
+        parseConfig();
+        return prefixesOfCallbackMethods;
+    }
+
+    public static boolean isUseAnyMethodWithPrefixAsEntrypoint() throws IOException {
+        parseConfig();
+        return useAnyMethodWithPrefixAsEntrypoint;
+    }
+
+    public static boolean isUseWorkaroundForAbstract() throws IOException {
+        parseConfig();
+        return useWorkaroundForAbstract;
+    }
+
+    public static int getTimeout() throws IOException {
+        parseConfig();
+        return timeout;
+    }
+
+    public static int getThresholdContextInsensitive() throws IOException {
+        parseConfig();
+        return thresholdContextInsensitive;
+    }
+
+    public static int getThresholdSkipEntrypoint() throws IOException {
+        parseConfig();
+        return thresholdSkipEntrypoint;
     }
 }

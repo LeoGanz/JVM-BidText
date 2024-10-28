@@ -1,14 +1,15 @@
 package edu.purdue.cs.toydroid.bidtext.java;
 
+import edu.purdue.cs.toydroid.utils.SimpleConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.util.concurrent.*;
 
 public class Main {
-    private static final long DEFAULT_TIMEOUT = 20;
     private static final Logger logger = LogManager.getLogger(Main.class);
-    private static long timeout = DEFAULT_TIMEOUT;
+    private static long timeout;
 
     /**
      * @param args first and only argument should be the path to the system under test. The path can be a path to a
@@ -25,24 +26,16 @@ public class Main {
             throw new IllegalArgumentException(
                     "Please specify path to the system under test as the first and only argument.");
         }
-        String timeoutSetting = System.getProperty("BidText.Timeout", Long.toString(DEFAULT_TIMEOUT));
         try {
-            long temp = Long.parseLong(timeoutSetting);
-            if (temp < 5L) {
-                logger.warn("Too small TIMEOUT: {} minutes. Use default: {} minutes.", temp, DEFAULT_TIMEOUT);
-            } else {
-                timeout = temp;
-            }
+            timeout = SimpleConfig.getTimeout();
+            logger.info("Set TIMEOUT to {} minutes.", timeout);
         } catch (Exception e) {
-            logger.warn("Invalid TIMEOUT setting: {} minutes. Use default: {} minutes.", timeoutSetting,
-                    DEFAULT_TIMEOUT);
+            logger.warn("Invalid TIMEOUT setting: Please update the configuration file");
         }
-        logger.info("Set TIMEOUT as {} minutes.", timeout);
         try {
             doAnalysis(pathToJarOrClassesRootFolder);
         } catch (Throwable e) {
-            logger.error("Crashed: {}", e.getMessage());
-            throw e;
+            logger.error("Analysis crashed. See error for details.", e);
         }
         long analysisEnd = System.currentTimeMillis();
         String time =
@@ -82,22 +75,13 @@ public class Main {
                     throw e;
                 } catch (TimeoutException e) {
                     analysis.signalTimeout();
-                    logger.warn("Analysis Timeout after {} {}!", timeout, TimeUnit.MINUTES);
+                    logger.warn("Analysis timeout after {} {}!", timeout, TimeUnit.MINUTES);
                 }
-            } catch (Throwable t) {
-                logger.error("Crashed: {}", t.getMessage());
-                throw t;
             } finally {
                 if (!future.isDone()) {
                     future.cancel(true);
                 }
             }
         }
-
-        // Stat.dumpStat(ApkFile);
-        // if (analysis.hasResult()) {
-        // analysis.dumpResult();
-        // }
-        // analysis.dumpCgStat();
     }
 }
