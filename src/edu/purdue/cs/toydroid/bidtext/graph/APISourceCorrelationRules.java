@@ -1,12 +1,16 @@
 package edu.purdue.cs.toydroid.bidtext.graph;
 
+import edu.purdue.cs.toydroid.bidtext.analysis.SinkDefinitions;
+import edu.purdue.cs.toydroid.utils.SimpleConfig;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class APISourceCorrelationRules {
-    private final static String RuleFile = "dat/TraditionalSources.txt";
     private static boolean ruleCollected = false;
     private static Map<String, String> sig2rules;
 
@@ -21,10 +25,9 @@ public class APISourceCorrelationRules {
         }
         ruleCollected = true;
         sig2rules = new HashMap<>();
-        BufferedReader reader;
-        try {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(
+                SinkDefinitions.class.getClassLoader().getResourceAsStream(SimpleConfig.getArtificialSourcesFile()))))){
             String line;
-            reader = new BufferedReader(new FileReader(RuleFile));
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty() || line.startsWith("#")) {

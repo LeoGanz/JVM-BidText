@@ -1,3 +1,0 @@
-java\/awt\/.*
-javax\/swing\/.*
-org\/apache\/xerces\/.*

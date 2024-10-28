@@ -23,7 +23,7 @@ import java.util.stream.StreamSupport;
 public class CustomClassHierarchyFactory {
 
     private static final Logger logger = LogManager.getLogger(CustomClassHierarchyFactory.class);
-    private static final boolean DO_SPRING_PREPROCESSING_DEFAULT = true;
+    private static final boolean DO_SPRING_PREPROCESSING_DEFAULT = false;
 
     public static ClassHierarchy make(String pathToJarOrClassesRootFolder, AnalysisCache cache) throws IOException,
             ClassHierarchyException, InvalidClassFileException {
@@ -33,11 +33,15 @@ public class CustomClassHierarchyFactory {
     public static ClassHierarchy make(String pathToJarOrClassesRootFolder, AnalysisCache cache,
                                       boolean doSpringProcessing) throws IOException, ClassHierarchyException,
             InvalidClassFileException {
-        String exclusionFilePath = SimpleConfig.getExclusionFile();
-        logger.info("Exclusion file: " + exclusionFilePath);
+        String inclusionsFilePath = SimpleConfig.getInclusionsFile();
+        String exclusionFilePath = SimpleConfig.getExclusionsFile();
         File exclusionsFile = exclusionFilePath != null ? new File(exclusionFilePath) : null;
+        ClassLoader classLoader = CustomClassHierarchyFactory.class.getClassLoader();
+
         AnalysisScope scope =
-                AnalysisScopeReader.instance.makeJavaBinaryAnalysisScope(pathToJarOrClassesRootFolder, exclusionsFile);
+                AnalysisScopeReader.instance.readJavaScope(inclusionsFilePath, exclusionsFile, classLoader);
+        ClassLoaderReference walaClassLoader = scope.getLoader(AnalysisScope.APPLICATION);
+        AnalysisScopeReader.instance.addClassPathToScope(pathToJarOrClassesRootFolder, scope, walaClassLoader);
         ClassHierarchy basicClassHierarchy = ClassHierarchyFactory.make(scope);
         printDebugInfo(basicClassHierarchy);
 

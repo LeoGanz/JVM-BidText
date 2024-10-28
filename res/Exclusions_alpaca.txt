@@ -11,10 +11,7 @@ com\/ibm\/security\/.*
 org\/apache\/xerces\/.*
 javax\/.*
 java\/util\/.*
-java\/io\/.*
 jdk\/internal\/.*
-
-java\/io\/.*
 okhttp3\/internal\/.*
 org\/slf4j\/.*
 .*\/internal\/.*

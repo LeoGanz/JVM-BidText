@@ -1,6 +1,7 @@
 package edu.purdue.cs.toydroid.bidtext.analysis;
 
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
+import edu.purdue.cs.toydroid.utils.SimpleConfig;
 import edu.purdue.cs.toydroid.utils.WalaUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,13 +9,10 @@ import org.apache.logging.log4j.Logger;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.InputStreamReader;
+import java.util.*;
 
 public class SinkDefinitions {
-    private final static String SINK_FILE = "dat/Sinks.txt";
     public final static String SEPARATOR = " ";
     public static final String COMMENT_PREFIX = "#";
     private static final Logger logger = LogManager.getLogger(SinkDefinitions.class);
@@ -29,7 +27,8 @@ public class SinkDefinitions {
         }
         sinksCollected = true;
         sig2SinkDefinitions.clear();
-        try (BufferedReader reader = new BufferedReader(new FileReader(SINK_FILE))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(
+                SinkDefinitions.class.getClassLoader().getResourceAsStream(SimpleConfig.getSinkDefinitionsFile()))))) {
             String line;
 
             while ((line = reader.readLine()) != null) {

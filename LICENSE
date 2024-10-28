@@ -1,5 +1,11 @@
-Source code (under folder src/) and files (dat/APIRules.txt, 
-    dat/SensitiveTerms.txt) are released under the Apache-2.0 license. 
+Source code (under folder src/) and the follwoing files:
+    res/APIRules.txt,
+    res/SensitiveTerms.txt,
+    res/Exclusions.txt,
+    res/Sinks.txt,
+    res/ArtificialSources.txt,
+    res/Config.properties
+are released under the Apache-2.0 license.
 ************************************************************************
 
                                  Apache License

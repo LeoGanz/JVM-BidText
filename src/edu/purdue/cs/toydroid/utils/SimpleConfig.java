@@ -4,68 +4,60 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.Properties;
 
 public class SimpleConfig {
-	private static final Logger logger = LogManager.getLogger(SimpleConfig.class);
+    private static final Logger logger = LogManager.getLogger(SimpleConfig.class);
 
-	private static String PROPERTIES = "dat/Config.properties";
+    private static final String PROPERTIES = "res/Config.properties";
 
-	private static boolean configParsed = false;
-	private static String androidJar;
-	private static String exclusionFile;
-	private static String additionalJars;
+    private static boolean configParsed = false;
+    private static String inclusionsFile;
+    private static String exclusionFile;
+    private static String sinkDefinitionsFile;
+    private static String artificialSourcesFile;
+    private static String apiPropagationRulesFile;
 
-	private static void parseConfig() throws FileNotFoundException, IOException {
-		if (configParsed) {
-			return;
-		}
-		InputStream is = new FileInputStream(PROPERTIES);
-		Properties prop = new Properties();
-		prop.load(is);
-		androidJar = prop.getProperty("ANDROID_JAR");
-		exclusionFile = prop.getProperty("EXCLUSION_FILE");
-		additionalJars = prop.getProperty("ADDITIONAL_JARS");
-		is.close();
-		configParsed = true;
-	}
+    private static void parseConfig() throws IOException {
+        if (configParsed) {
+            return;
+        }
+        InputStream is = new FileInputStream(PROPERTIES);
+        Properties prop = new Properties();
+        prop.load(is);
+        inclusionsFile = prop.getProperty("INCLUSIONS");
+        exclusionFile = prop.getProperty("EXCLUSIONS");
+        sinkDefinitionsFile = prop.getProperty("SINK_DEFINITIONS");
+        artificialSourcesFile = prop.getProperty("ARTIFICIAL_SOURCES");
+        apiPropagationRulesFile = prop.getProperty("API_PROPAGATION_RULES");
+        is.close();
+        configParsed = true;
+    }
 
-	public static void setPropertyFile(String pf) {
-		PROPERTIES = pf;
-		configParsed = false;
-	}
+    public static String getInclusionsFile() throws IOException {
+        parseConfig();
+        return inclusionsFile;
+    }
 
-	public static String getAndroidJar() throws FileNotFoundException,
-			IOException {
-		parseConfig();
-		System.out.println("androidJar: " + androidJar);
-		return androidJar;
-	}
+    public static String getExclusionsFile() throws IOException {
+        parseConfig();
+        return exclusionFile;
+    }
 
-	public static String getExclusionFile() throws FileNotFoundException,
-			IOException {
-		parseConfig();
-		return exclusionFile;
-	}
+    public static String getSinkDefinitionsFile() throws IOException {
+        parseConfig();
+        return sinkDefinitionsFile;
+    }
 
-	public static Iterator<String> iteratorAdditionalJars()
-			throws FileNotFoundException, IOException {
-		parseConfig();
-		if (additionalJars == null) {
-			return Collections.emptyIterator();
-		} else {
-			List<String> jarsList = new LinkedList<String>();
-			String[] jars = additionalJars.split(";");
-			for (String j : jars) {
-				j = j.trim();
-				if (!j.isEmpty()) {
-					jarsList.add(j);
-				}
-			}
-			return jarsList.iterator();
-		}
-	}
+    public static String getArtificialSourcesFile() throws IOException {
+        parseConfig();
+        return artificialSourcesFile;
+    }
+
+    public static String getApiPropagationRulesFile() throws IOException {
+        parseConfig();
+        return apiPropagationRulesFile;
+    }
 }

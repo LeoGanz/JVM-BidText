@@ -1,18 +1,18 @@
 package edu.purdue.cs.toydroid.bidtext.graph;
 
+import edu.purdue.cs.toydroid.bidtext.analysis.SinkDefinitions;
+import edu.purdue.cs.toydroid.utils.SimpleConfig;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.io.InputStreamReader;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class APIPropagationRules {
 
-    private final static String RULE_FILE = "dat/APIRules.txt";
     private final static Pattern RULE_PATTERN = Pattern.compile("^(-?\\d+)([<>]*=[<>]*)(-?\\d+)$");
     private static final Map<String, Set<Rule>> sig2Rules = new HashMap<>();
     private static boolean rulesCollected = false;
@@ -28,7 +28,8 @@ public class APIPropagationRules {
         }
         rulesCollected = true;
         sig2Rules.clear();
-        try (BufferedReader reader = new BufferedReader(new FileReader(RULE_FILE))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(
+                SinkDefinitions.class.getClassLoader().getResourceAsStream(SimpleConfig.getApiPropagationRulesFile()))))) {
             String line;
 
             while ((line = reader.readLine()) != null) {

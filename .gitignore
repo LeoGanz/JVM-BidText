@@ -1,6 +1,6 @@
 bin/
 *~
-dat/Config.properties
+res/Config.properties
 build/
 .gradle/
 /.idea/

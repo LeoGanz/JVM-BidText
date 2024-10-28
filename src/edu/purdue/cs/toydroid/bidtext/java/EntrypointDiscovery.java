@@ -20,7 +20,7 @@ public class EntrypointDiscovery {
     private static final boolean CONSIDER_OVERRIDING_PRIMORDIAL_AS_OVERRIDING_FRAMEWORK = true;
     private static final String PREFIX_OF_CALLBACK_METHODS = "on";
     private static final boolean USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT = false;
-    public static final boolean USE_WORKAROUND_FOR_ABSTRACT = false;
+    public static final boolean USE_WORKAROUND_FOR_ABSTRACT = true;
     private final Set<Entrypoint> entrypoints = new HashSet<>();
     private final Set<String> entrypointSignatures = new HashSet<>();
     private final IClassHierarchy classHierarchy;
