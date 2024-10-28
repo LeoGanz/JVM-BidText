@@ -57,7 +57,7 @@ public class AnalysisUtil {
         logger.info("Dumped text for {} sinks.", idx);
     }
 
-    private static void dumpTextForSink(DiscoveredSink sink, int idx) throws IOException {
+    private static void dumpTextForSink(DiscoveredSink sink, int idx) {
         logger.info(" - dump text for sink: {}", sink.sinkSignature());
         File resultFile = new File(REPORT_FOLDER + "/" + idx + "." + sink.getTag() + ".txt");
 

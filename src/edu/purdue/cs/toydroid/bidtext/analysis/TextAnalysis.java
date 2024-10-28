@@ -25,9 +25,9 @@ public class TextAnalysis {
     private final Map<String, List<Statement>> text2Path;
     private Set<String> sensitivityIndicators;
 
-    public TextAnalysis() throws IOException {
+    public TextAnalysis() {
         text2Path = new HashMap<>();
-        sensitiveTerms = new SensitiveTerms(SensitiveTerms.TERM_FILE);
+        sensitiveTerms = new SensitiveTerms();
     }
 
     public void analyze(Map<String, List<Statement>> texts) {

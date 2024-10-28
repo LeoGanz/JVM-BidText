@@ -1,5 +1,7 @@
 package edu.purdue.cs.toydroid.bidtext.analysis;
 
+import edu.purdue.cs.toydroid.utils.SimpleConfig;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -8,29 +10,25 @@ import java.util.regex.Pattern;
 public class SensitiveTerms implements Iterable<SensitiveTerms.SensitiveTerm> {
 
     private static final boolean ACCEPT_ONLY_COMPLETE_WORDS = false;
-    public static final String TERM_FILE = "res/SensitiveTerms.txt";
     private static final String FORBIDDEN_PREFIX = "class.{0,25}";
     private static final String FORBIDDEN_SUFFIX = "_?type";
-    private final String termFile;
     private final Set<SensitiveTerm> terms;
 
-    public SensitiveTerms(String inputFile) throws IOException {
-        this.termFile = inputFile;
+    public SensitiveTerms() {
         terms = new HashSet<>();
         collectTerms();
     }
 
     public static void main(String[] args) throws IOException {
-        SensitiveTerms sensitiveTerms = new SensitiveTerms(TERM_FILE);
+        SensitiveTerms sensitiveTerms = new SensitiveTerms();
         for (SensitiveTerm term : sensitiveTerms) {
             System.out.println(term.tag() + "\n" + term.pattern() + "\n");
         }
     }
 
-    private void collectTerms() throws IOException {
-        BufferedReader reader =
-                new BufferedReader(
-                        new InputStreamReader(new FileInputStream(termFile), StandardCharsets.UTF_8));
+    private void collectTerms() {
+        try(BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(
+                SinkDefinitions.class.getClassLoader().getResourceAsStream(SimpleConfig.getSensitiveTermsFile()))))) {
         String line;
         String tag = null;
         StringBuilder regex = null;
@@ -60,6 +58,9 @@ public class SensitiveTerms implements Iterable<SensitiveTerms.SensitiveTerm> {
         // possible
         if (tag != null && regex != null) {
             addTerm(tag, regex);
+        }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to sensitive terms file", e);
         }
     }
 

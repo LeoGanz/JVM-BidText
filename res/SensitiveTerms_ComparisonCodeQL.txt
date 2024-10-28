@@ -12,6 +12,8 @@ account[_\s]?id
 AUTH
 (bearer|oauth|access|processor)[_/\s]?token
 key|secret
+# we add 'password' for the comparison to CodeQL
+password
 
 PERSONAL_INFO
 (first|last|given|family|middle|full|nick|account[_\s]?(holder|owner)|applicant|transmitter|employer)[_\s]?name

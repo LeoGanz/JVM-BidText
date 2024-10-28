@@ -20,6 +20,7 @@ public class SimpleConfig {
     private static String sinkDefinitionsFile;
     private static String artificialSourcesFile;
     private static String apiPropagationRulesFile;
+    private static String sensitiveTermsFile;
 
     private static boolean springPresprocessingEnabled;
     private static Set<String> prefixesOfCallbackMethods;
@@ -41,6 +42,7 @@ public class SimpleConfig {
         sinkDefinitionsFile = prop.getProperty("SINK_DEFINITIONS");
         artificialSourcesFile = prop.getProperty("ARTIFICIAL_SOURCES");
         apiPropagationRulesFile = prop.getProperty("API_PROPAGATION_RULES");
+        sensitiveTermsFile = prop.getProperty("SENSITIVE_TERMS");
 
         springPresprocessingEnabled = Boolean.parseBoolean(prop.getProperty("SPRING_PREPROCESSING_ENABLED"));
         prefixesOfCallbackMethods = Set.of(prop.getProperty("PREFIXES_OF_CALLBACK_METHODS").split(","));
@@ -76,6 +78,11 @@ public class SimpleConfig {
     public static String getApiPropagationRulesFile() throws IOException {
         parseConfig();
         return apiPropagationRulesFile;
+    }
+
+    public static String getSensitiveTermsFile() throws IOException {
+        parseConfig();
+        return sensitiveTermsFile;
     }
 
     public static boolean isSpringPreprocessingEnabled() throws IOException {

@@ -34,6 +34,10 @@ Further, you can configure certain options for the analysis; we explain the opti
 
 ## Reproduction of the Evaluation Results
 
+The following sections describe how to reproduce the results of the case studies presented in the thesis.
+We describe the required changes to the configuration and how to run the analysis on the respective projects.
+
+
 ### Evaluation on LeakyCode (Case Study on Hand-Crafted Examples)
 No changes to default configuration required.
 
@@ -84,6 +88,9 @@ You can compile the alpaca-java project (downloaded from our fork) with the foll
 
 Copy the path to the class files: `<alpaca-java-Project-Root>/build/classes`\
 Execute the analysis like described in the Execution section.
+
+To reproduce the results of the evaluation, you can enable or disable the options `USE_WORKAROUND_FOR_ABSTRACT` in the `Config.properties` file.
+Further, you can enable or disable the additional propagation rule in `ApiPropagationRules.txt` to see the effect of the rule on the results; the rule is clearly marked in the file.
 
 
 ### Evaluation on LeakySprings (Case Study on Spring Application)
