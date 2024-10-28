@@ -19,7 +19,8 @@ public class EntrypointDiscovery {
     private static final Logger logger = LogManager.getLogger(EntrypointDiscovery.class);
     private static final boolean CONSIDER_OVERRIDING_PRIMORDIAL_AS_OVERRIDING_FRAMEWORK = true;
     private static final String PREFIX_OF_CALLBACK_METHODS = "on";
-    private static final boolean USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT = true;
+    private static final boolean USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT = false;
+    public static final boolean USE_WORKAROUND_FOR_ABSTRACT = false;
     private final Set<Entrypoint> entrypoints = new HashSet<>();
     private final Set<String> entrypointSignatures = new HashSet<>();
     private final IClassHierarchy classHierarchy;
@@ -63,7 +64,7 @@ public class EntrypointDiscovery {
             }
             String methodName = method.getName().toString();
             if (methodName.startsWith(PREFIX_OF_CALLBACK_METHODS) &&
-                    (overridingFramework(method) || overridingAbstract(method) || USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT)) {
+                    (overridingFramework(method) || (USE_WORKAROUND_FOR_ABSTRACT && overridingAbstract(method)) || USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT)) {
                 addEntrypoint(new DefaultEntrypoint(method, classHierarchy));
             }
         }
@@ -74,7 +75,7 @@ public class EntrypointDiscovery {
     private static boolean overridingAbstract(IMethod method) {
         IMethod methodInAnySuperclasses = findSuperclassMethod(method);
         if (methodInAnySuperclasses == null) {
-            return false;
+            return USE_WORKAROUND_FOR_ABSTRACT;
         }
         return methodInAnySuperclasses.isAbstract();
     }
@@ -84,7 +85,7 @@ public class EntrypointDiscovery {
 
         IMethod methodInAnySuperclasses = findSuperclassMethod(method);
         if (methodInAnySuperclasses == null) {
-            return false;
+            return USE_WORKAROUND_FOR_ABSTRACT;
         }
         ClassLoaderReference classLoaderOfSuperclassMethod =
                 methodInAnySuperclasses.getDeclaringClass().getClassLoader().getReference();
