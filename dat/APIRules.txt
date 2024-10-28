@@ -2,9 +2,15 @@
 
 # no ret->param propagation or propagation between params
 
+
+
+# no propagation for constructs sending data to the network
+# -> thesis chapter 4.3.4
+# prefix with '#' to enable original behavior
+[instance] okhttp3.WebSocket.send(Ljava/lang/String;)Z 0>=<1
+
+
 [static] android.provider.Settings$Secure.getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String; 1=>-1
-
-
 
 [instance] java.lang.String.substring(I)Ljava/lang/String; -1<=>0
 
@@ -242,9 +248,3 @@
 [static] android.util.Log.wtf(Ljava/lang/String;Ljava/lang/String;)I 0=>1
 [static] android.util.Log.wtf(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I 0=>1
 [static] android.util.Log.wtf(Ljava/lang/String;Ljava/lang/Throwable;)I 0>=<1
-
-
-
-
-# no propagation for constructs sending data to the network
-#[instance] okhttp3.WebSocket.send(Ljava/lang/String;)Z 0>=<1
