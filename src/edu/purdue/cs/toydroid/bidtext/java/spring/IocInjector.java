@@ -15,6 +15,7 @@ import com.ibm.wala.types.MethodReference;
 import edu.purdue.cs.toydroid.bidtext.java.CustomClassHierarchyFactory;
 import edu.purdue.cs.toydroid.bidtext.java.spring.ioc_container.IocContainerClass;
 import edu.purdue.cs.toydroid.bidtext.java.spring.ioc_container.IocGetter;
+import edu.purdue.cs.toydroid.utils.SimpleConfig;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,9 +38,12 @@ public class IocInjector {
         annotationFinder.processClasses();
 
         initializeAutowiredFields(pathToJarOrClassesRootFolder, annotationFinder);
+
         // To model der Spring functionality, we load the class hierarchy twice.
         // The intermediate class hierarchy is no longer needed at this point
-        System.gc();
+        if (SimpleConfig.isEnableGarbageCollectorHintAfterIntermediateClassHierarchy()) {
+            System.gc();
+        }
 
         return buildAdaptedClassHierarchyFromInstrumentedJarFile(scope, cache);
     }

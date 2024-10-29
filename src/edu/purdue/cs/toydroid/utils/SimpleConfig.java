@@ -23,6 +23,7 @@ public class SimpleConfig {
     private static String sensitiveTermsFile;
 
     private static boolean springPresprocessingEnabled;
+    private static boolean enableGarbageCollectorHintAfterIntermediateClassHierarchy;
     private static Set<String> prefixesOfCallbackMethods;
     private static boolean useAnyMethodWithPrefixAsEntrypoint;
     private static boolean useWorkaroundForAbstract;
@@ -45,6 +46,7 @@ public class SimpleConfig {
         sensitiveTermsFile = prop.getProperty("SENSITIVE_TERMS");
 
         springPresprocessingEnabled = Boolean.parseBoolean(prop.getProperty("SPRING_PREPROCESSING_ENABLED"));
+        enableGarbageCollectorHintAfterIntermediateClassHierarchy = Boolean.parseBoolean(prop.getProperty("ENABLE_GARBAGE_COLLECTOR_HINT_AFTER_INTERMEDIATE_CLASS_HIERARCHY"));
         prefixesOfCallbackMethods = Set.of(prop.getProperty("PREFIXES_OF_CALLBACK_METHODS").split(","));
         useAnyMethodWithPrefixAsEntrypoint = Boolean.parseBoolean(prop.getProperty("USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT"));
         useWorkaroundForAbstract = Boolean.parseBoolean(prop.getProperty("USE_WORKAROUND_FOR_ABSTRACT"));
@@ -88,6 +90,11 @@ public class SimpleConfig {
     public static boolean isSpringPreprocessingEnabled() throws IOException {
         parseConfig();
         return springPresprocessingEnabled;
+    }
+
+    public static boolean isEnableGarbageCollectorHintAfterIntermediateClassHierarchy() throws IOException {
+        parseConfig();
+        return enableGarbageCollectorHintAfterIntermediateClassHierarchy;
     }
 
     public static Set<String> getPrefixesOfCallbackMethods() throws IOException {
