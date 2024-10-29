@@ -37,6 +37,9 @@ public class IocInjector {
         annotationFinder.processClasses();
 
         initializeAutowiredFields(pathToJarOrClassesRootFolder, annotationFinder);
+        // To model der Spring functionality, we load the class hierarchy twice.
+        // The intermediate class hierarchy is no longer needed at this point
+        System.gc();
 
         return buildAdaptedClassHierarchyFromInstrumentedJarFile(scope, cache);
     }
