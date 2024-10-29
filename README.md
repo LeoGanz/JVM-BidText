@@ -27,6 +27,7 @@ Reports are generated in the `reports` directory together with the log of the an
 
 
 ## Configuration
+All configuration files are located in the `res` directory.
 General configuration can be changed through the `Config.properties` file.
 The config file allows you to select which other files with rules etc. the analysis will use.
 Further, you can configure certain options for the analysis; we explain the options inside the file.
@@ -36,6 +37,13 @@ Further, you can configure certain options for the analysis; we explain the opti
 
 The following sections describe how to reproduce the results of the case studies presented in the thesis.
 We describe the required changes to the configuration and how to run the analysis on the respective projects.
+When we performed the evaluation for the case-studies in section 4 of the thesis, the spring extension was not yet implemented.
+This version of JVM-BidText is available in the branch `jvm-no-spring`.
+In the design of the extension for Spring, we made sure that the extension can be disabled.
+If the extension is disabled, the analysis will completely skip the Spring preprocessing step and run as it would without the extension.
+Therefore, you can replicate the results of the case studies from the `spring` branch by disabling the Spring extension in the configuration.
+As the `spring` branch is our main branch, this has the benefit of keeping access to a proper configuration system and this README file.
+We recommend staying in the `spring` branch.
 
 
 ### Evaluation on LeakyCode (Case Study on Hand-Crafted Examples)
@@ -100,6 +108,7 @@ SPRING_PREPROCESSING_ENABLED=true
 PREFIXES_OF_CALLBACK_METHODS=on
 USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT=true
 ```
+If you set the option `SPRING_PREPROCESSING_ENABLED` to `false`, you can replicate the results of the evaluation without the Spring extension.
 
 You can compile the LeakySprings project with the following command executed in the root of the LeakySprings project:
 ```bash
