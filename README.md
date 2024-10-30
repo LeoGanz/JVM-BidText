@@ -49,7 +49,7 @@ We recommend staying in the `spring` branch.
 ### Evaluation on LeakyCode (Case Study on Hand-Crafted Examples)
 No changes to default configuration required.
 
-You can compile the LeakyCode project with the following command executed in the root of the LeakyCode project:
+You can compile the [LeakyCode](https://github.com/LeoGanz/LeakyCode) project with the following command executed in the root of the LeakyCode project:
 ```bash
 ./mvnw compile
 ```
@@ -78,7 +78,7 @@ You can obtain the respective paths by adding the following gradle task to the `
         }
     }
 ```
-If you download the alpaca-java project, from our fork, the `build.gradle` file is already adapted.
+If you download the [alpaca-java project, from our fork](https://github.com/LeoGanz/alpaca-java), the `build.gradle` file is already adapted.
 Run the task with `./gradlew printRuntimeClasspath` from the root of the alpaca-java repo.
 Copy the output only for the libraries gson, okttp-jvm, and okio-jvm to the `Inclusions_alpaca.properties` file.
 
@@ -101,6 +101,19 @@ To reproduce the results of the evaluation, you can enable or disable the option
 Further, you can enable or disable the additional propagation rule in `ApiPropagationRules.txt` to see the effect of the rule on the results; the rule is clearly marked in the file.
 
 
+### Evaluation on LeakyKotlin (Case-Study on Kotlin Application)
+No changes to default configuration required.
+
+You can compile the [LeakyKotlin](https://github.com/LeoGanz/LeakyKotlin) project with the following command executed in the root of the LeakyKotlin project:
+```bash
+./gradlew build
+```
+
+Copy the path to the class files: `<LeakyKotlin-Project-Root>/build/classes`\
+Execute the analysis like described in the Execution section.
+
+
+
 ### Evaluation on LeakySprings (Case Study on Spring Application)
 Make sure to configure the following options in the `Config.properties` file:
 ```properties
@@ -110,7 +123,7 @@ USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT=true
 ```
 If you set the option `SPRING_PREPROCESSING_ENABLED` to `false`, you can replicate the results of the evaluation without the Spring extension.
 
-You can compile the LeakySprings project with the following command executed in the root of the LeakySprings project:
+You can compile the [LeakySprings](https://github.com/LeoGanz/LeakySprings) project with the following command executed in the root of the LeakySprings project:
 ```bash
 ./mvnw compile
 ```
@@ -119,15 +132,3 @@ Copy the path to the class files:`<LeakySprings-Project-Root>/target/classes`\
 Make sure not to specify any subfolder of the classes directory. The bytecode instrumentation will not be able to build a working jar file with the modified code if it receives something else than the root of the classes directory.\
 Execute the analysis like described in the Execution section.
 For measure runtime and memory consumption for the LeakySprings project we deleted all compiled class files not belonging to the case-study from the target directory.
-
-
-### Evaluation on LeakyKotlin (Footnote on Kotlin Support)
-No changes to default configuration required.
-
-You can compile the LeakyKotlin project with the following command executed in the root of the LeakyKotlin project:
-```bash
-./gradlew build
-```
-
-Copy the path to the class files: `<LeakyKotlin-Project-Root>/target/classes`\
-Execute the analysis like described in the Execution section.
