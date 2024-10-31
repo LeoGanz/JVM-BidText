@@ -132,3 +132,16 @@ Copy the path to the class files:`<LeakySprings-Project-Root>/target/classes`\
 Make sure not to specify any subfolder of the classes directory. The bytecode instrumentation will not be able to build a working jar file with the modified code if it receives something else than the root of the classes directory.\
 Execute the analysis like described in the Execution section.
 For measure runtime and memory consumption for the LeakySprings project we deleted all compiled class files not belonging to the case-study from the target directory.
+
+
+
+### Comparison to CodeQL
+To compare the results of JVM-BidText to CodeQL, you can enable CodeQL with the extended query suite in a public GitHub repository.
+We provide the additional test cases for the comparison in the repository [CodeQL-Tests](https://github.com/LeoGanz/CodeQL-Tests).
+We use the term "password" to indicate the sensitive data in the test cases.
+This term is known to work with CodeQL.
+Make sure to configure the keywords of JVM-BidText to recognize this term as weill.
+The simplest option is to enable the following setting in `Config.properties`:
+```properties
+SENSITIVE_TERMS=SensitiveTerms_ComparisonCodeQL.txt
+```
