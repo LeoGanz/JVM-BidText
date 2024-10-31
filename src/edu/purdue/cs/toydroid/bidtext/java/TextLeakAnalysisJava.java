@@ -1,5 +1,6 @@
 package edu.purdue.cs.toydroid.bidtext.java;
 
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisCacheImpl;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
@@ -9,6 +10,7 @@ import edu.purdue.cs.toydroid.utils.WalaUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -41,11 +43,14 @@ public class TextLeakAnalysisJava implements Callable<TextLeakAnalysisJava> {
     }
 
     private void initialize() throws Exception {
-        cache = new AnalysisCacheImpl(); //TODO check
-        classHierarchy = CustomClassHierarchyFactory.make(pathToJarOrClassesRootFolder, cache);
+        cache = new AnalysisCacheImpl();
+        CustomClassHierarchyFactory customClassHierarchyFactory =                new CustomClassHierarchyFactory();
+        classHierarchy = customClassHierarchyFactory.make(pathToJarOrClassesRootFolder, cache);
+        Optional<Set<IMethod>> springControllerHandlerMethods =
+                customClassHierarchyFactory.getSpringControllerHandlerMethods();
         WalaUtil.setClassHierarchy(classHierarchy);
 
-        entrypoints = EntrypointDiscovery.discover(classHierarchy);
+        entrypoints = EntrypointDiscovery.discover(classHierarchy, springControllerHandlerMethods);
         logger.info("Entrypoints: " + entrypoints);
     }
 

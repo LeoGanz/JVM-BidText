@@ -30,12 +30,12 @@ public class IocInjector {
         return tmpDir + File.separator + INSTRUMENTED_JAR_FILE_NAME;
     }
 
-    public static ClassHierarchy buildAdaptedClassHierarchy(String pathToJarOrClassesRootFolder,
-                                                            ClassHierarchy classHierarchy, AnalysisScope scope,
+    public static ClassHierarchy buildAdaptedClassHierarchy(CustomClassHierarchyFactory customClassHierarchyFactory,
+                                                            String pathToJarOrClassesRootFolder,
+                                                            AnnotationFinder annotationFinder, AnalysisScope scope,
                                                             AnalysisCache cache) throws InvalidClassFileException,
             IOException, ClassHierarchyException {
-        AnnotationFinder annotationFinder = new AnnotationFinder(classHierarchy);
-        annotationFinder.processClasses();
+
 
         initializeAutowiredFields(pathToJarOrClassesRootFolder, annotationFinder);
 
@@ -45,20 +45,19 @@ public class IocInjector {
             System.gc();
         }
 
-        return buildAdaptedClassHierarchyFromInstrumentedJarFile(scope, cache);
+        return buildAdaptedClassHierarchyFromInstrumentedJarFile(customClassHierarchyFactory, scope, cache);
     }
 
-    private static ClassHierarchy buildAdaptedClassHierarchyFromInstrumentedJarFile(AnalysisScope scope,
-                                                                                    AnalysisCache cache) throws
+    private static ClassHierarchy buildAdaptedClassHierarchyFromInstrumentedJarFile(
+            CustomClassHierarchyFactory customClassHierarchyFactory, AnalysisScope scope, AnalysisCache cache) throws
             IOException, ClassHierarchyException, InvalidClassFileException {
-        ClassHierarchy adjustedClassHierarchy = CustomClassHierarchyFactory.make(getOutputJarPath(), cache, false);
+        ClassHierarchy adjustedClassHierarchy = customClassHierarchyFactory.make(getOutputJarPath(), cache, false);
         AnnotationFinder annotationFinder = new AnnotationFinder(adjustedClassHierarchy);
         annotationFinder.processClasses();
         AnalysisOptions options = new AnalysisOptions(scope, Set.of());
         options.setReflectionOptions(AnalysisOptions.ReflectionOptions.FULL);
         IocContainerClass springIOCModel =
-                IocContainerClass.make(annotationFinder, adjustedClassHierarchy, options,
-                        cache);
+                IocContainerClass.make(annotationFinder, adjustedClassHierarchy, options, cache);
         boolean addSuccessful = adjustedClassHierarchy.addClass(springIOCModel);
         if (!addSuccessful) {
             throw new RuntimeException("Failed to add Spring IOC model to class hierarchy");

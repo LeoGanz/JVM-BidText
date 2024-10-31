@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 public class EntrypointDiscovery {
@@ -35,18 +36,22 @@ public class EntrypointDiscovery {
     private final Set<Entrypoint> entrypoints = new HashSet<>();
     private final Set<String> entrypointSignatures = new HashSet<>();
     private final IClassHierarchy classHierarchy;
+    private final Optional<Set<IMethod>> springControllerHandlerMethods;
 
-    private EntrypointDiscovery(IClassHierarchy classHierarchy) {
+    private EntrypointDiscovery(IClassHierarchy classHierarchy, Optional<Set<IMethod>> springControllerHandlerMethods) {
         this.classHierarchy = classHierarchy;
+        this.springControllerHandlerMethods = springControllerHandlerMethods;
     }
 
-    public static Set<Entrypoint> discover(IClassHierarchy classHierarchy) {
-        return new EntrypointDiscovery(classHierarchy).findAllEntrypoints();
+    public static Set<Entrypoint> discover(IClassHierarchy classHierarchy,
+                                           Optional<Set<IMethod>> springControllerHandlerMethods) {
+        return new EntrypointDiscovery(classHierarchy, springControllerHandlerMethods).findAllEntrypoints();
     }
 
     private Set<Entrypoint> findAllEntrypoints() {
         mainMethodEntrypoints();
         callbackMethodEntrypoints();
+        springEntrypoints();
         return entrypoints;
     }
 
@@ -65,6 +70,11 @@ public class EntrypointDiscovery {
             }
         }
         logger.info("Callback entrypoints: {}", entrypoints.size() - initialEntrypointCount);
+    }
+
+    private void springEntrypoints() {
+        springControllerHandlerMethods.ifPresent(
+                iMethods -> iMethods.forEach(method -> addEntrypoint(new DefaultEntrypoint(method, classHierarchy))));
     }
 
     private void callbackMethodEntrypoints(IClass clazz) {

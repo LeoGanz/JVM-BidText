@@ -2,6 +2,7 @@ package edu.purdue.cs.toydroid.bidtext.java.spring;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IField;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.shrike.shrikeCT.AnnotationsReader;
 import com.ibm.wala.types.ClassLoaderReference;
@@ -20,6 +21,7 @@ public class AnnotationFinder {
     private final Set<IClass> prototypeBeans = new HashSet<>();
     private final Set<IClass> controllers = new HashSet<>();
     private final Map<String, Set<IField>> classesWithAutowiredFields = new HashMap<>();
+    private final Set<IMethod> controllerHandlerMethods = new HashSet<>();
 
 
     public AnnotationFinder(ClassHierarchy classHierarchy) {
@@ -38,10 +40,28 @@ public class AnnotationFinder {
             Set<IField> autowiredFieldsOfClazz = findAutowiredFields(clazz);
             processAutowiredFields(clazz, autowiredFieldsOfClazz);
         }
+        for (IClass clazz : controllers) {
+            controllerHandlerMethods.addAll(findControllerHandlerMethods(clazz));
+        }
         System.out.println("Singleton Beans: " + singletonBeans);
         System.out.println("Prototype Beans: " + prototypeBeans);
         System.out.println("Controllers: " + controllers);
         System.out.println("Autowired Fields: " + classesWithAutowiredFields);
+    }
+
+    private static final Set<String> CONTROLLER_HANDLER_ANNOTATIONS = new HashSet<>(Arrays.asList(
+            "Lorg/springframework/web/bind/annotation/GetMapping",
+            "Lorg/springframework/web/bind/annotation/PostMapping",
+            "Lorg/springframework/web/bind/annotation/PutMapping",
+            "Lorg/springframework/web/bind/annotation/DeleteMapping",
+            "Lorg/springframework/web/bind/annotation/PatchMapping"
+
+    ));
+    private Set<IMethod> findControllerHandlerMethods(IClass clazz) {
+        return clazz.getDeclaredMethods().stream()
+                .filter(method -> method.getAnnotations().stream()
+                        .anyMatch(annotation -> CONTROLLER_HANDLER_ANNOTATIONS.contains(annotation.getType().getName().toString())))
+                .collect(Collectors.toSet());
     }
 
     private void processAutowiredFields(IClass clazz, Set<IField> autowiredFieldsOfClazz) {
@@ -139,6 +159,10 @@ public class AnnotationFinder {
     public Set<IField> getAutowiredFields(String clazz) {
         Set<IField> fields = classesWithAutowiredFields.get(clazz);
         return fields == null ? Collections.emptySet() : fields;
+    }
+
+    public Set<IMethod> getControllerHandlerMethods() {
+        return controllerHandlerMethods;
     }
 
 }

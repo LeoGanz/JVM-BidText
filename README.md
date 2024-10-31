@@ -131,7 +131,7 @@ You can compile the [LeakySprings](https://github.com/LeoGanz/LeakySprings) proj
 Copy the path to the class files:`<LeakySprings-Project-Root>/target/classes`\
 Make sure not to specify any subfolder of the classes directory. The bytecode instrumentation will not be able to build a working jar file with the modified code if it receives something else than the root of the classes directory.\
 Execute the analysis like described in the Execution section.
-For measure runtime and memory consumption for the LeakySprings project we deleted all compiled class files not belonging to the case-study from the target directory.
+To measure runtime and memory consumption for the LeakySprings project, we deleted all compiled class files not belonging to the case-study from the target directory.
 
 
 
