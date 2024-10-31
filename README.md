@@ -37,7 +37,7 @@ Further, you can configure certain options for the analysis; we explain the opti
 
 The following sections describe how to reproduce the results of the case studies presented in the thesis.
 We describe the required changes to the configuration and how to run the analysis on the respective projects.
-When we performed the evaluation for the case-studies in section 4 of the thesis, the spring extension was not yet implemented.
+When we performed the evaluation for the case studies in section 4 of the thesis, the spring extension was not yet implemented.
 This version of JVM-BidText is available in the branch `jvm-no-spring`.
 In the design of the extension for Spring, we made sure that the extension can be disabled.
 If the extension is disabled, the analysis will completely skip the Spring preprocessing step and run as it would without the extension.
@@ -101,7 +101,7 @@ To reproduce the results of the evaluation, you can enable or disable the option
 Further, you can enable or disable the additional propagation rule in `ApiPropagationRules.txt` to see the effect of the rule on the results; the rule is clearly marked in the file.
 
 
-### Evaluation on LeakyKotlin (Case-Study on Kotlin Application)
+### Evaluation on LeakyKotlin (case study on Kotlin Application)
 No changes to default configuration required.
 
 You can compile the [LeakyKotlin](https://github.com/LeoGanz/LeakyKotlin) project with the following command executed in the root of the LeakyKotlin project:
@@ -122,6 +122,7 @@ PREFIXES_OF_CALLBACK_METHODS=on
 USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT=true
 ```
 If you set the option `SPRING_PREPROCESSING_ENABLED` to `false`, you can replicate the results of the evaluation without the Spring extension.
+Setting the option `ENABLE_SPRING_ENTRYPOINT_DISCOVERY` to `false`, has no influence on the results of the evaluation of the case study, because the entry points of the CaseStudyController also follow the naming convention of the entry points.
 
 You can compile the [LeakySprings](https://github.com/LeoGanz/LeakySprings) project with the following command executed in the root of the LeakySprings project:
 ```bash
@@ -131,7 +132,7 @@ You can compile the [LeakySprings](https://github.com/LeoGanz/LeakySprings) proj
 Copy the path to the class files:`<LeakySprings-Project-Root>/target/classes`\
 Make sure not to specify any subfolder of the classes directory. The bytecode instrumentation will not be able to build a working jar file with the modified code if it receives something else than the root of the classes directory.\
 Execute the analysis like described in the Execution section.
-To measure runtime and memory consumption for the LeakySprings project, we deleted all compiled class files not belonging to the case-study from the target directory.
+To measure runtime and memory consumption for the LeakySprings project, we deleted all compiled class files not belonging to the case study from the target directory.
 
 
 

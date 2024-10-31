@@ -22,8 +22,9 @@ public class SimpleConfig {
     private static String apiPropagationRulesFile;
     private static String sensitiveTermsFile;
 
-    private static boolean springPresprocessingEnabled;
+    private static boolean enableSpringDiPresprocessing;
     private static boolean enableGarbageCollectorHintAfterIntermediateClassHierarchy;
+    private static boolean enableSpringEntrypointDiscovery;
     private static Set<String> prefixesOfCallbackMethods;
     private static boolean useAnyMethodWithPrefixAsEntrypoint;
     private static boolean useWorkaroundForAbstract;
@@ -45,8 +46,9 @@ public class SimpleConfig {
         apiPropagationRulesFile = prop.getProperty("API_PROPAGATION_RULES");
         sensitiveTermsFile = prop.getProperty("SENSITIVE_TERMS");
 
-        springPresprocessingEnabled = Boolean.parseBoolean(prop.getProperty("SPRING_PREPROCESSING_ENABLED"));
+        enableSpringDiPresprocessing = Boolean.parseBoolean(prop.getProperty("ENABLE_SPRING_DI_PREPROCESSING"));
         enableGarbageCollectorHintAfterIntermediateClassHierarchy = Boolean.parseBoolean(prop.getProperty("ENABLE_GARBAGE_COLLECTOR_HINT_AFTER_INTERMEDIATE_CLASS_HIERARCHY"));
+        enableSpringEntrypointDiscovery = Boolean.parseBoolean(prop.getProperty("ENABLE_SPRING_ENTRYPOINT_DISCOVERY"));
         prefixesOfCallbackMethods = Set.of(prop.getProperty("PREFIXES_OF_CALLBACK_METHODS").split(","));
         useAnyMethodWithPrefixAsEntrypoint = Boolean.parseBoolean(prop.getProperty("USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT"));
         useWorkaroundForAbstract = Boolean.parseBoolean(prop.getProperty("USE_WORKAROUND_FOR_ABSTRACT"));
@@ -87,14 +89,19 @@ public class SimpleConfig {
         return sensitiveTermsFile;
     }
 
-    public static boolean isSpringPreprocessingEnabled() throws IOException {
+    public static boolean isSpringDiPreprocessingEnabled() throws IOException {
         parseConfig();
-        return springPresprocessingEnabled;
+        return enableSpringDiPresprocessing;
     }
 
-    public static boolean isEnableGarbageCollectorHintAfterIntermediateClassHierarchy() throws IOException {
+    public static boolean isGarbageCollectorHintAfterIntermediateClassHierarchyEnabled() throws IOException {
         parseConfig();
         return enableGarbageCollectorHintAfterIntermediateClassHierarchy;
+    }
+
+    public static boolean isSpringEntrypointDiscoveryEnabled() throws IOException {
+        parseConfig();
+        return enableSpringEntrypointDiscovery;
     }
 
     public static Set<String> getPrefixesOfCallbackMethods() throws IOException {

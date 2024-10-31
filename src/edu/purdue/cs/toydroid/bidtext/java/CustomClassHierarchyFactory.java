@@ -30,7 +30,7 @@ public class CustomClassHierarchyFactory {
     private Optional<Set<IMethod>> springControllerHandlerMethods = Optional.empty();
 
     public ClassHierarchy make(String pathToJarOrClassesRootFolder, AnalysisCache cache) throws IOException, ClassHierarchyException, InvalidClassFileException {
-        return make(pathToJarOrClassesRootFolder, cache, SimpleConfig.isSpringPreprocessingEnabled());
+        return make(pathToJarOrClassesRootFolder, cache, SimpleConfig.isSpringDiPreprocessingEnabled());
     }
 
     public ClassHierarchy make(String pathToJarOrClassesRootFolder, AnalysisCache cache,boolean doSpringProcessing) throws IOException, ClassHierarchyException,
@@ -50,7 +50,9 @@ public class CustomClassHierarchyFactory {
         if (doSpringProcessing) {
             AnnotationFinder annotationFinder = new AnnotationFinder(basicClassHierarchy);
             annotationFinder.processClasses();
-            springControllerHandlerMethods = Optional.of(annotationFinder.getControllerHandlerMethods());
+            if (SimpleConfig.isSpringEntrypointDiscoveryEnabled()) {
+                springControllerHandlerMethods = Optional.of(annotationFinder.getControllerHandlerMethods());
+            }
             return IocInjector.buildAdaptedClassHierarchy(this, pathToJarOrClassesRootFolder, annotationFinder, scope,
                     cache);
         } else {

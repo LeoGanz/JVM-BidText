@@ -41,7 +41,7 @@ public class IocInjector {
 
         // To model der Spring functionality, we load the class hierarchy twice.
         // The intermediate class hierarchy is no longer needed at this point
-        if (SimpleConfig.isEnableGarbageCollectorHintAfterIntermediateClassHierarchy()) {
+        if (SimpleConfig.isGarbageCollectorHintAfterIntermediateClassHierarchyEnabled()) {
             System.gc();
         }
 
