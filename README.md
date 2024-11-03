@@ -123,6 +123,8 @@ USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT=true
 ```
 If you set the option `SPRING_PREPROCESSING_ENABLED` to `false`, you can replicate the results of the evaluation without the Spring extension.
 Setting the option `ENABLE_SPRING_ENTRYPOINT_DISCOVERY` to `false`, has no influence on the results of the evaluation of the case study, because the entry points of the CaseStudyController also follow the naming convention of the entry points.
+Either `USE_ANY_METHOD_WITH_PREFIX_AS_ENTRYPOINT` or `ENABLE_SPRING_ENTRYPOINT_DISCOVERY` is required to find the entry points of the CaseStudyController.
+In general, `ENABLE_SPRING_ENTRYPOINT_DISCOVERY` is the preferred option, as it does not rely on naming conventions.
 
 You can compile the [LeakySprings](https://github.com/LeoGanz/LeakySprings) project with the following command executed in the root of the LeakySprings project:
 ```bash

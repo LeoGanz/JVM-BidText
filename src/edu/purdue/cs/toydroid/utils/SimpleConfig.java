@@ -22,7 +22,8 @@ public class SimpleConfig {
     private static String apiPropagationRulesFile;
     private static String sensitiveTermsFile;
 
-    private static boolean enableSpringDiPresprocessing;
+    private static boolean matchOnlyWholeWordsInTextAnalysis;
+    private static boolean enableSpringDiPreprocessing;
     private static boolean enableGarbageCollectorHintAfterIntermediateClassHierarchy;
     private static boolean enableSpringEntrypointDiscovery;
     private static Set<String> prefixesOfCallbackMethods;
@@ -46,7 +47,8 @@ public class SimpleConfig {
         apiPropagationRulesFile = prop.getProperty("API_PROPAGATION_RULES");
         sensitiveTermsFile = prop.getProperty("SENSITIVE_TERMS");
 
-        enableSpringDiPresprocessing = Boolean.parseBoolean(prop.getProperty("ENABLE_SPRING_DI_PREPROCESSING"));
+        matchOnlyWholeWordsInTextAnalysis = Boolean.parseBoolean(prop.getProperty("MATCH_ONLY_WHOLE_WORDS_IN_TEXT_ANALYSIS"));
+        enableSpringDiPreprocessing = Boolean.parseBoolean(prop.getProperty("ENABLE_SPRING_DI_PREPROCESSING"));
         enableGarbageCollectorHintAfterIntermediateClassHierarchy = Boolean.parseBoolean(prop.getProperty("ENABLE_GARBAGE_COLLECTOR_HINT_AFTER_INTERMEDIATE_CLASS_HIERARCHY"));
         enableSpringEntrypointDiscovery = Boolean.parseBoolean(prop.getProperty("ENABLE_SPRING_ENTRYPOINT_DISCOVERY"));
         prefixesOfCallbackMethods = Set.of(prop.getProperty("PREFIXES_OF_CALLBACK_METHODS").split(","));
@@ -89,9 +91,14 @@ public class SimpleConfig {
         return sensitiveTermsFile;
     }
 
+    public static boolean isMatchOnlyWholeWordsInTextAnalysis() throws IOException {
+        parseConfig();
+        return matchOnlyWholeWordsInTextAnalysis;
+    }
+
     public static boolean isSpringDiPreprocessingEnabled() throws IOException {
         parseConfig();
-        return enableSpringDiPresprocessing;
+        return enableSpringDiPreprocessing;
     }
 
     public static boolean isGarbageCollectorHintAfterIntermediateClassHierarchyEnabled() throws IOException {
