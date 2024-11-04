@@ -45,6 +45,9 @@ Therefore, you can replicate the results of the case studies from the `spring` b
 As the `spring` branch is our main branch, this has the benefit of keeping access to a proper configuration system and this README file.
 We recommend staying in the `spring` branch.
 
+We provide links to the repositories of the case studies and test cases in the following sections.
+Additionally, an all-in-one archive with all case studies and test cases is available at [https://doi.org/10.5281/zenodo.14033511](https://doi.org/10.5281/zenodo.14033511).
+
 
 ### Evaluation on LeakyCode (Case Study on Hand-Crafted Examples)
 No changes to default configuration required.
@@ -148,3 +151,9 @@ The simplest option is to enable the following setting in `Config.properties`:
 ```properties
 SENSITIVE_TERMS=SensitiveTerms_ComparisonCodeQL.txt
 ```
+
+
+## Publications
+I make my Master's thesis "Detection of Sensitive Data Exposures in JVM Applications with Bidirectional Text Correlation Analysis" available at [https://doi.org/10.5281/zenodo.14033420](https://doi.org/10.5281/zenodo.14033420).
+
+Huang, Zhang, and Tan introduce BidText in their paper "Detecting Sensitive Data Disclosure via Bi-directional Text Correlation Analysis" available at [https://doi.org/10.1145/2950290.2950348](https://doi.org/10.1145/2950290.2950348).
