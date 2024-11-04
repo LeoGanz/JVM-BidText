@@ -10,9 +10,9 @@ import org.apache.logging.log4j.Logger;
 import java.util.*;
 
 public class TypingGraph {
-    private static Logger logger = LogManager.getLogger(TypingGraph.class);
+    private static final Logger logger = LogManager.getLogger(TypingGraph.class);
 
-    private Entrypoint entrypoint;
+    private final Entrypoint entrypoint;
     public Map<CGNode, TypingSubGraph> subGraphs;
     private Set<Integer> possibleExternalInput;
     private Map<String, Set<TypingNode>> fieldIncoming; // possible incoming fields
@@ -161,7 +161,7 @@ public class TypingGraph {
     public Iterator<TypingNode> iterateAllIncomingFields(String sig) {
         Set<TypingNode> nodeSet;
         if (fieldIncoming == null || (nodeSet = fieldIncoming.get(sig)) == null) {
-            return Collections.EMPTY_SET.iterator();
+            return Collections.emptyIterator();
         }
         return nodeSet.iterator();
     }
