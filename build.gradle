@@ -8,12 +8,12 @@ repositories {
 }
 
 application {
-    mainClass = 'edu.purdue.cs.toydroid.bidtext.java.Main'
+    mainClass = 'de.lmu.ifi.jvmbidtext.Main'
 }
 
 tasks.register('runSuite', JavaExec) {
     dependsOn 'classes'
-    mainClass = 'edu.purdue.cs.toydroid.bidtext.java.SuiteMain'
+    mainClass = 'de.lmu.ifi.jvmbidtext.SuiteMain'
     classpath = sourceSets.main.runtimeClasspath
 }
 
