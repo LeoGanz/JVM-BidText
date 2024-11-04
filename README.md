@@ -1,5 +1,7 @@
 # JVM-BidText
-JvM-BidText is a static analysis tool for JVM projects that aims to detect potential sensitive data exposures.
+[![DOI](https://zenodo.org/badge/810011768.svg)](https://doi.org/10.5281/zenodo.14034414)
+
+JVM-BidText is a static analysis tool for JVM applications that aims to detect potential sensitive data exposures.
 We use bidirectional text correlation analysis which allows us to detect leaks that other tools cannot find.
 JVM-BidText is based on [BidText](https://bitbucket.org/hjjandy/toydroid.bidtext/) which introduces the concept of bidirectional text correlation analysis for Android applications.
 JVM-BidText is an adapted and generalized version of BidText that supports general JVM projects (Java, Kotlin, etc.) and has basic support for Spring applications.
